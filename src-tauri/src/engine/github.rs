@@ -407,38 +407,30 @@ impl GitHubClient {
         let signature = Signature::now(author_name, author_email)?;
 
         // Check if there's a parent commit
-        let mut parents = Vec::new();
         let parent_commit = match repo.head() {
             Ok(head) => Some(head.peel_to_commit()?),
             Err(_) => None,
         };
-        
-        if let Some(ref p) = parent_commit {
-            parents.push(p);
-        }
 
-        // Check for MERGE_HEAD (in case we are resolving a conflict)
-        let merge_commit = match repo.find_reference("MERGE_HEAD") {
-            Ok(refer) => Some(refer.peel_to_commit()?),
-            Err(_) => None,
+        let commit_id = if let Some(parent) = parent_commit {
+            repo.commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                message,
+                &tree,
+                &[&parent],
+            )?
+        } else {
+            repo.commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                message,
+                &tree,
+                &[],
+            )?
         };
-
-        if let Some(ref m) = merge_commit {
-            parents.push(m);
-        }
-
-        let commit_id = repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            message,
-            &tree,
-            &parents,
-        )?;
-
-        if merge_commit.is_some() {
-            repo.cleanup_state().ok();
-        }
 
         Ok(commit_id)
     }
@@ -476,27 +468,25 @@ impl GitHubClient {
         remote.fetch(&[branch], Some(&mut fetch_options), None)?;
 
         let fetch_head = repo.find_reference("FETCH_HEAD")?;
+        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
         
-        let (analysis, _) = repo.merge_analysis(&[&repo.reference_to_annotated_commit(&fetch_head)?])?;
+        let (analysis, preference) = repo.merge_analysis(&[&fetch_commit])?;
         
         if analysis.is_fast_forward() {
             let refname = format!("refs/heads/{}", branch);
             let mut reference = repo.find_reference(&refname)?;
-            reference.set_target(repo.reference_to_annotated_commit(&fetch_head)?.id(), "Fast-forward")?;
+            reference.set_target(fetch_commit.id(), "Fast-forward")?;
             repo.set_head(&refname)?;
             repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
         } else if analysis.is_normal() {
-            // Use repo.merge which handles MERGE_HEAD and index setup
-            let fetch_annotated = repo.reference_to_annotated_commit(&fetch_head)?;
-            let mut merge_opts = git2::MergeOptions::new();
-            let mut checkout_opts = git2::build::CheckoutBuilder::new();
-            checkout_opts.force(); // Allow checkout to update working dir
+            let head_commit = repo.reference_to_annotated_commit(&repo.head()?)?;
+            let our_commit = repo.find_commit(head_commit.id())?;
+            let their_commit = repo.find_commit(fetch_commit.id())?;
             
-            repo.merge(&[&fetch_annotated], Some(&mut merge_opts), Some(&mut checkout_opts))?;
-
-            if repo.index()?.has_conflicts() {
+            let mut index = repo.merge_commits(&our_commit, &their_commit, None)?;
+            
+            if index.has_conflicts() {
                 // List conflicted files
-                let index = repo.index()?;
                 let conflicts = index.conflicts()?;
                 let mut files = Vec::new();
                 for conflict in conflicts {
@@ -508,18 +498,13 @@ impl GitHubClient {
                         }
                     }
                 }
-                // We are in merging state with conflicts.
+                repo.checkout_index(Some(&mut index), Some(git2::build::CheckoutBuilder::default().allow_conflicts(true)))?;
                 return Err(GitHubError::Conflict(files.join(", ")));
             } else {
                 // Auto-merge successful, create commit
-                // Note: repo.merge writes MERGE_HEAD.
                 let signature = repo.signature()?;
-                let mut index = repo.index()?;
                 let tree_id = index.write_tree_to(&repo)?;
                 let tree = repo.find_tree(tree_id)?;
-                
-                let head_commit = repo.head()?.peel_to_commit()?;
-                let fetch_commit_obj = repo.find_commit(fetch_annotated.id())?;
                 
                 repo.commit(
                     Some("HEAD"),
@@ -527,11 +512,9 @@ impl GitHubClient {
                     &signature,
                     "Merge remote-tracking branch 'origin/main'",
                     &tree,
-                    &[&head_commit, &fetch_commit_obj],
+                    &[&repo.head()?.peel_to_commit()?, &repo.find_commit(fetch_commit.id())?],
                 )?;
-                
-                // Cleanup MERGE_HEAD
-                repo.cleanup_state()?;
+                repo.checkout_head(None)?;
             }
         }
 
