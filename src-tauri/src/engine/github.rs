@@ -152,7 +152,7 @@ impl GitHubClient {
     }
 
     /// Poll for the access token after user completes device flow
-    pub async fn poll_for_token(&mut self, device_code: &str, interval: u64) -> Result<String, GitHubError> {
+    pub async fn poll_for_token(&mut self, device_code: &str, _interval: u64) -> Result<String, GitHubError> {
         let response = self.http_client
             .post(GITHUB_TOKEN_URL)
             .header(ACCEPT, "application/json")
@@ -470,7 +470,7 @@ impl GitHubClient {
         let fetch_head = repo.find_reference("FETCH_HEAD")?;
         let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
         
-        let (analysis, preference) = repo.merge_analysis(&[&fetch_commit])?;
+        let (analysis, _preference) = repo.merge_analysis(&[&fetch_commit])?;
         
         if analysis.is_fast_forward() {
             let refname = format!("refs/heads/{}", branch);
