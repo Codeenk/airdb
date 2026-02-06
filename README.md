@@ -228,4 +228,4 @@ Built with:
 
 ---
 
-**Made with ❤️ by the AirDB Team**
+**Made with ❤️ by the AirLabs Team**
