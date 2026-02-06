@@ -1,0 +1,15 @@
+# Rust
+/target
+/src-tauri/target
+**/*.rs.bk
+
+# Node.js
+dist
+node_modules
+.DS_Store
+
+# AirDB
+data/*.db
+data/*.db-*
+.airdb/keys.json
+*.log
