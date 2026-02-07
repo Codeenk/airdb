@@ -63,5 +63,41 @@ jobs:
             - **Linux**: Download `.AppImage` or `.deb`
             - **macOS**: Download `.dmg`
             - **Windows**: Download `.msi` or `.exe`
+            
+            ### Self-Update
+            AirDB includes automatic update checking. You can also run:
+            ```bash
+            airdb update check
+            ```
           releaseDraft: true
           prerelease: false
+
+  # Generate update manifest after all builds complete
+  manifest:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate Update Manifest
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          
+          python scripts/generate_manifest.py \
+            --version "$VERSION" \
+            --channel stable \
+            --changelog "Release ${{ github.ref_name }}"
+
+      - name: Upload Manifest to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: update-manifest.json
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
