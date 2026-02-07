@@ -2,6 +2,7 @@
 //! Tauri application library
 
 pub mod engine;
+pub mod commands;
 
 use engine::config::Config;
 use engine::database::Database;
@@ -402,21 +403,27 @@ fn rollback_update() -> Result<serde_json::Value, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use commands::NoSqlState;
+    
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
+        .manage(NoSqlState {
+            project_dir: Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
             get_status,
             init_project,
-            open_project,
-            create_migration,
             run_migrations,
-            get_migration_status,
+            get_schema,
+            execute_query,
+            start_api,
+            stop_api,
+            get_api_status,
+            generate_api_key,
             list_api_keys,
-            create_api_key,
             revoke_api_key,
-            get_auth_status,
-            start_github_login,
+            github_login,
             complete_github_login,
             github_logout,
             list_projects,
@@ -427,6 +434,19 @@ pub fn run() {
             set_update_channel,
             apply_update,
             rollback_update,
+            // NoSQL commands
+            commands::nosql_init,
+            commands::nosql_create_collection,
+            commands::nosql_list_collections,
+            commands::nosql_insert,
+            commands::nosql_get,
+            commands::nosql_query,
+            commands::nosql_delete,
+            commands::set_project_dir,
+            // Hybrid commands
+            commands::hybrid_create_relation,
+            commands::hybrid_list_relations,
+            commands::hybrid_query,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
