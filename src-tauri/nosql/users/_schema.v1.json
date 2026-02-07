@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "collection": "users",
+  "fields": {
+    "email": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "allow_additional": true
+}

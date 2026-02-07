@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "add_email",
+  "created_at": "2026-02-07T07:09:25.810218718Z",
+  "app_version": "0.1.0",
+  "operations": [
+    {
+      "op": "add_field",
+      "name": "email",
+      "field_type": "string",
+      "required": true
+    }
+  ]
+}

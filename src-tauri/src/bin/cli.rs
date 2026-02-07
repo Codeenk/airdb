@@ -3,7 +3,7 @@
 //! This binary provides the `airdb` CLI tool for managing projects.
 
 use airdb_lib::engine::{
-    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, OutputFormat},
+    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, SchemaAction, OutputFormat},
     config::Config,
     database::Database,
     migrations::MigrationRunner,
@@ -1145,6 +1145,133 @@ fn cmd_nosql(action: NoSqlAction, project_dir: &Path, json: bool) -> Result<(), 
                 println!("📊 Collection: {}", collection);
                 println!("   Documents: {}", count);
                 println!("   Format: v{}", meta.format_version);
+            }
+        }
+
+        NoSqlAction::Schema { collection, action } => {
+            use airdb_lib::engine::nosql::{MigrationRunner, MigrationOp};
+            use airdb_lib::engine::nosql::schema::FieldType;
+            
+            let collection_path = project_dir.join("nosql").join(&collection);
+            
+            if !collection_path.exists() {
+                return Err(format!("Collection '{}' not found", collection).into());
+            }
+            
+            let runner = MigrationRunner::new(&collection_path);
+            
+            match action {
+                SchemaAction::Create { name } => {
+                    let migration = runner.create_migration(&name)?;
+                    let migrations_dir = collection_path.join("migrations");
+                    migration.save(&migrations_dir)?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "created",
+                            "version": migration.version,
+                            "name": name
+                        }));
+                    } else {
+                        println!("✅ Migration {:03}_{}.json created", migration.version, name);
+                        println!("   Edit the file to add operations, then run: airdb nosql schema {} run", collection);
+                    }
+                }
+                
+                SchemaAction::Run => {
+                    let schema = runner.run()?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "applied",
+                            "version": schema.version,
+                            "fields": schema.fields.len()
+                        }));
+                    } else {
+                        println!("✅ Schema updated to version {}", schema.version);
+                        println!("   Fields: {}", schema.fields.len());
+                    }
+                }
+                
+                SchemaAction::Status => {
+                    let migrations = runner.list_migrations()?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "collection": collection,
+                            "migration_count": migrations.len(),
+                            "migrations": migrations.iter().map(|m| serde_json::json!({
+                                "version": m.version,
+                                "name": m.name,
+                                "ops": m.operations.len()
+                            })).collect::<Vec<_>>()
+                        }));
+                    } else {
+                        println!("📋 Schema Migrations for '{}':", collection);
+                        if migrations.is_empty() {
+                            println!("   No migrations yet");
+                        } else {
+                            for m in migrations {
+                                println!("   {:03}_{} ({} ops)", m.version, m.name, m.operations.len());
+                            }
+                        }
+                    }
+                }
+                
+                SchemaAction::AddField { name, field_type, required } => {
+                    let ft = match field_type.to_lowercase().as_str() {
+                        "string" => FieldType::String,
+                        "number" => FieldType::Number,
+                        "boolean" | "bool" => FieldType::Boolean,
+                        "array" => FieldType::Array,
+                        "object" => FieldType::Object,
+                        _ => FieldType::Any,
+                    };
+                    
+                    let mut migration = runner.create_migration(&format!("add_{}", name))?;
+                    migration.operations.push(MigrationOp::AddField {
+                        name: name.clone(),
+                        field_type: ft,
+                        required,
+                        default: None,
+                    });
+                    
+                    let migrations_dir = collection_path.join("migrations");
+                    std::fs::create_dir_all(&migrations_dir)?;
+                    migration.save(&migrations_dir)?;
+                    
+                    // Auto-run the migration
+                    let schema = runner.run()?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "added",
+                            "field": name,
+                            "schema_version": schema.version
+                        }));
+                    } else {
+                        println!("✅ Field '{}' added to schema (v{})", name, schema.version);
+                    }
+                }
+                
+                SchemaAction::Show => {
+                    let schema = runner.build_schema()?;
+                    
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&schema)?);
+                    } else {
+                        println!("📝 Schema for '{}' (v{}):", collection, schema.version);
+                        if schema.fields.is_empty() {
+                            println!("   No fields defined (accepts any structure)");
+                        } else {
+                            for (name, def) in &schema.fields {
+                                let req = if def.required { "*" } else { "" };
+                                println!("   {}{}: {:?}", name, req, def.field_type);
+                            }
+                        }
+                        println!("   Allow additional: {}", schema.allow_additional);
+                    }
+                }
             }
         }
     }

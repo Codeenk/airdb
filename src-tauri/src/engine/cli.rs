@@ -304,6 +304,47 @@ pub enum NoSqlAction {
         /// Collection name
         collection: String,
     },
+
+    /// Schema migration management
+    Schema {
+        /// Collection name
+        collection: String,
+        
+        #[command(subcommand)]
+        action: SchemaAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SchemaAction {
+    /// Create a new migration
+    Create {
+        /// Migration name (e.g., add_email_field)
+        name: String,
+    },
+
+    /// Run pending migrations
+    Run,
+
+    /// Show migration status
+    Status,
+
+    /// Add a field via migration
+    AddField {
+        /// Field name
+        name: String,
+        
+        /// Field type (string, number, boolean, array, object, any)
+        #[arg(short = 't', long, default_value = "string")]
+        field_type: String,
+        
+        /// Make field required
+        #[arg(short, long)]
+        required: bool,
+    },
+
+    /// Show current schema
+    Show,
 }
 
 impl Cli {

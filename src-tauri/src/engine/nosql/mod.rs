@@ -13,6 +13,7 @@ pub mod collection;
 pub mod document;
 pub mod query;
 pub mod error;
+pub mod migration;
 
 pub use storage::NoSqlEngine;
 pub use meta::Meta;
@@ -21,3 +22,5 @@ pub use collection::Collection;
 pub use document::Document;
 pub use query::{Filter, Query};
 pub use error::NoSqlError;
+pub use migration::{Migration, MigrationOp, MigrationRunner};
+
