@@ -7,6 +7,7 @@ use serde_json::Value;
 use super::document::Document;
 use super::error::{NoSqlError, Result};
 use super::schema::Schema;
+use super::migration::MigrationRunner;
 
 /// A NoSQL collection (like a table in SQL)
 pub struct Collection {
@@ -29,8 +30,12 @@ impl Collection {
             return Err(NoSqlError::CollectionNotFound(name.to_string()));
         }
         
-        // Load schema if exists
-        let schema = Schema::load_latest(&path).ok();
+        // Build schema from migrations
+        let runner = MigrationRunner::new(&path);
+        let schema = match runner.build_schema() {
+            Ok(s) if !s.fields.is_empty() => Some(s),
+            _ => None,
+        };
         
         Ok(Self {
             name: name.to_string(),
