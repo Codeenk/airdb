@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "relations": [
+    {
+      "name": "user_sessions",
+      "source": {
+        "engine": "nosql",
+        "collection": "sessions",
+        "field": "user_id"
+      },
+      "target": {
+        "engine": "sql",
+        "collection": "users",
+        "field": "id"
+      },
+      "type": "many-to-one",
+      "introduced_in": "0.1.0",
+      "on_delete": "none",
+      "on_update": "none"
+    }
+  ]
+}

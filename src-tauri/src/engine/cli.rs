@@ -104,6 +104,12 @@ pub enum Commands {
         #[command(subcommand)]
         action: NoSqlAction,
     },
+
+    /// Hybrid SQL/NoSQL operations
+    Hybrid {
+        #[command(subcommand)]
+        action: HybridAction,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -345,6 +351,40 @@ pub enum SchemaAction {
 
     /// Show current schema
     Show,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum HybridAction {
+    /// Create a relation between SQL and NoSQL
+    Relate {
+        /// Relation name
+        name: String,
+        
+        /// Source (e.g., nosql.sessions.user_id)
+        source: String,
+        
+        /// Target (e.g., sql.users.id)
+        target: String,
+        
+        /// Relation type (one-to-one, one-to-many, many-to-one, many-to-many)
+        #[arg(short = 't', long, default_value = "many-to-one")]
+        relation_type: String,
+    },
+
+    /// List all relations
+    Relations,
+
+    /// Remove a relation
+    Unrelate {
+        /// Relation name
+        name: String,
+    },
+
+    /// Execute an AirQL query
+    Query {
+        /// AirQL query as JSON
+        query: String,
+    },
 }
 
 impl Cli {

@@ -8,7 +8,10 @@ pub mod keystore;
 pub mod cli;
 pub mod updater;
 pub mod nosql;
+pub mod hybrid;
 
 pub use config::Config;
 pub use database::Database;
 pub use nosql::NoSqlEngine;
+pub use hybrid::{Relation, RelationType, AirQuery, AirResult};
+

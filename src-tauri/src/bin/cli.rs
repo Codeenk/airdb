@@ -3,7 +3,7 @@
 //! This binary provides the `airdb` CLI tool for managing projects.
 
 use airdb_lib::engine::{
-    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, SchemaAction, OutputFormat},
+    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, SchemaAction, HybridAction, OutputFormat},
     config::Config,
     database::Database,
     migrations::MigrationRunner,
@@ -57,6 +57,9 @@ fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Nosql { action } => {
             cmd_nosql(action, &project_dir, json_output)?;
+        }
+        Commands::Hybrid { action } => {
+            cmd_hybrid(action, &project_dir, json_output)?;
         }
     }
 
@@ -1270,6 +1273,131 @@ fn cmd_nosql(action: NoSqlAction, project_dir: &Path, json: bool) -> Result<(), 
                             }
                         }
                         println!("   Allow additional: {}", schema.allow_additional);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle Hybrid SQL/NoSQL commands
+fn cmd_hybrid(action: HybridAction, project_dir: &Path, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    use airdb_lib::engine::hybrid::{
+        RelationsManifest, Relation, FieldRef, RelationType
+    };
+
+    match action {
+        HybridAction::Relate { name, source, target, relation_type } => {
+            let source_ref = FieldRef::parse(&source)
+                .ok_or_else(|| format!("Invalid source format: {}. Expected: engine.collection.field", source))?;
+            let target_ref = FieldRef::parse(&target)
+                .ok_or_else(|| format!("Invalid target format: {}. Expected: engine.collection.field", target))?;
+            
+            let rel_type = match relation_type.to_lowercase().as_str() {
+                "one-to-one" | "onetoone" => RelationType::OneToOne,
+                "one-to-many" | "onetomany" => RelationType::OneToMany,
+                "many-to-one" | "manytoone" => RelationType::ManyToOne,
+                "many-to-many" | "manytomany" => RelationType::ManyToMany,
+                _ => RelationType::ManyToOne,
+            };
+
+            let relation = Relation::new(&name, source_ref, target_ref, rel_type);
+            
+            let mut manifest = RelationsManifest::load(project_dir)?;
+            manifest.add(relation);
+            manifest.save(project_dir)?;
+
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "created",
+                    "name": name,
+                    "source": source,
+                    "target": target
+                }));
+            } else {
+                println!("✅ Relation '{}' created", name);
+                println!("   {} → {}", source, target);
+            }
+        }
+
+        HybridAction::Relations => {
+            let manifest = RelationsManifest::load(project_dir)?;
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&manifest)?);
+            } else {
+                println!("🔗 Relations ({} total):", manifest.relations.len());
+                if manifest.relations.is_empty() {
+                    println!("   No relations defined");
+                } else {
+                    for rel in &manifest.relations {
+                        println!("   {} ({:?})", rel.name, rel.relation_type);
+                        println!("     {} → {}", rel.source.to_string(), rel.target.to_string());
+                    }
+                }
+            }
+        }
+
+        HybridAction::Unrelate { name } => {
+            let mut manifest = RelationsManifest::load(project_dir)?;
+            manifest.relations.retain(|r| r.name != name);
+            manifest.save(project_dir)?;
+
+            if json {
+                println!("{}", serde_json::json!({"status": "removed", "name": name}));
+            } else {
+                println!("✅ Relation '{}' removed", name);
+            }
+        }
+
+        HybridAction::Query { query } => {
+            use airdb_lib::engine::hybrid::airql::{AirQuery, AIRQL_VERSION};
+            use airdb_lib::engine::hybrid::EngineType;
+            use airdb_lib::engine::nosql::{NoSqlEngine, Query as NsQuery, Filter as NsFilter};
+
+            let air_query: AirQuery = serde_json::from_str(&query)?;
+
+            if !air_query.is_compatible() {
+                return Err(format!(
+                    "Query version {} is newer than supported version {}",
+                    air_query.airql_version, AIRQL_VERSION
+                ).into());
+            }
+
+            match air_query.engine {
+                EngineType::Sql => {
+                    let sql = air_query.to_sql();
+                    if json {
+                        println!("{}", serde_json::json!({"sql": sql}));
+                    } else {
+                        println!("🔍 Generated SQL:");
+                        println!("   {}", sql);
+                    }
+                }
+                EngineType::Nosql => {
+                    let engine = NoSqlEngine::open(project_dir)?;
+                    let mut ns_query = NsQuery::new();
+                    
+                    for filter in &air_query.filters {
+                        ns_query = ns_query.filter(NsFilter::eq(&filter.field, filter.value.clone()));
+                    }
+                    
+                    if let Some(limit) = air_query.limit {
+                        ns_query = ns_query.limit(limit);
+                    }
+
+                    let results = engine.query(&air_query.from, ns_query)?;
+
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&results)?);
+                    } else {
+                        println!("📄 Results from '{}':", air_query.from);
+                        println!("   Found {} documents", results.len());
+                        for doc in results {
+                            println!("   • {}", doc.id);
+                        }
                     }
                 }
             }
