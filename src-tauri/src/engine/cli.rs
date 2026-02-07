@@ -92,6 +92,12 @@ pub enum Commands {
         #[command(subcommand)]
         action: SyncAction,
     },
+
+    /// Self-update management
+    Update {
+        #[command(subcommand)]
+        action: UpdateAction,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -191,6 +197,34 @@ pub enum SyncAction {
         /// Use remote version
         #[arg(long, group = "strategy")]
         theirs: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum UpdateAction {
+    /// Check for available updates
+    Check,
+
+    /// Download and prepare an update
+    Download {
+        /// Specific version to download
+        #[arg(short, long)]
+        version: Option<String>,
+    },
+
+    /// Apply a pending update (requires restart)
+    Apply,
+
+    /// Rollback to the previous version
+    Rollback,
+
+    /// Show current update status
+    Status,
+
+    /// Set update channel
+    Channel {
+        /// Channel name (stable, beta, nightly)
+        channel: String,
     },
 }
 

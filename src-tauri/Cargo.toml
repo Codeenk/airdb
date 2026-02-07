@@ -19,6 +19,10 @@ path = "src/main.rs"
 name = "airdb-cli"
 path = "src/bin/cli.rs"
 
+[[bin]]
+name = "airdb-bootstrap"
+path = "src/bin/bootstrap.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -50,7 +54,7 @@ git2 = "0.19"
 
 # OAuth2 / HTTP client
 oauth2 = "4"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 
 # Secret storage
 keyring = "3"
@@ -65,6 +69,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sha2 = "0.10"
 base64 = "0.22"
 dirs = "5"
+
+# Crypto (for update verification)
+ed25519-dalek = "2"
+hex = "0.4"
+
+# Async utilities
+futures-util = "0.3"
 
 # OpenAPI generation
 utoipa = { version = "5", features = ["axum_extras"] }

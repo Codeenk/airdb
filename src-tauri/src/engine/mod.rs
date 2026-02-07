@@ -6,6 +6,7 @@ pub mod api;
 pub mod github;
 pub mod keystore;
 pub mod cli;
+pub mod updater;
 
 pub use config::Config;
 pub use database::Database;

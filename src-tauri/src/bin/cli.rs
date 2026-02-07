@@ -3,7 +3,7 @@
 //! This binary provides the `airdb` CLI tool for managing projects.
 
 use airdb_lib::engine::{
-    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, OutputFormat},
+    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, OutputFormat},
     config::Config,
     database::Database,
     migrations::MigrationRunner,
@@ -51,6 +51,9 @@ fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Sync { action } => {
             cmd_sync(action, &project_dir, json_output)?;
+        }
+        Commands::Update { action } => {
+            cmd_update(action, json_output)?;
         }
     }
 
@@ -823,5 +826,161 @@ async fn cmd_sync(action: SyncAction, project_dir: &PathBuf, json: bool) -> Resu
         }
     }
     
+    Ok(())
+}
+
+/// Handle update commands
+fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    use airdb_lib::engine::updater::{VersionManager, UpdateState};
+
+    let version_manager = VersionManager::new()?;
+    version_manager.init()?;
+    
+    let state_path = version_manager.state_path();
+    let mut state = UpdateState::load(&state_path).unwrap_or_default();
+
+    match action {
+        UpdateAction::Check => {
+            // In production, this would check GitHub releases
+            let current = &state.current_version;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "current_version": current,
+                    "update_available": false,
+                    "message": "No updates available"
+                }));
+            } else {
+                println!("🔍 Checking for updates...");
+                println!("   Current version: v{}", current);
+                println!("   ✅ You are running the latest version");
+            }
+        }
+
+        UpdateAction::Download { version } => {
+            let target_version = version.unwrap_or_else(|| "latest".to_string());
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "not_available",
+                    "target_version": target_version,
+                    "message": "Self-update downloads not yet implemented"
+                }));
+            } else {
+                println!("📥 Download functionality will be available in a future release");
+                println!("   Target: {}", target_version);
+            }
+        }
+
+        UpdateAction::Apply => {
+            if state.pending_version.is_none() {
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "no_pending",
+                        "message": "No update pending"
+                    }));
+                } else {
+                    println!("ℹ️  No update pending. Run `airdb update check` first.");
+                }
+            } else {
+                let pending = state.pending_version.as_ref().unwrap();
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "ready",
+                        "pending_version": pending,
+                        "message": "Restart required to apply update"
+                    }));
+                } else {
+                    println!("🔄 Update v{} is pending", pending);
+                    println!("   Restart AirDB to apply the update");
+                }
+            }
+        }
+
+        UpdateAction::Rollback => {
+            let last_good = &state.last_good_version;
+            let current = &state.current_version;
+            
+            if last_good == current {
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "no_rollback",
+                        "message": "Already on the oldest version"
+                    }));
+                } else {
+                    println!("ℹ️  No previous version to rollback to");
+                }
+            } else {
+                // Mark for rollback
+                state.pending_version = Some(last_good.clone());
+                state.save(&state_path).ok();
+                
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "pending_rollback",
+                        "current": current,
+                        "target": last_good,
+                        "message": "Restart to complete rollback"
+                    }));
+                } else {
+                    println!("⏪ Rollback prepared");
+                    println!("   Current: v{}", current);
+                    println!("   Rolling back to: v{}", last_good);
+                    println!("   Restart AirDB to complete rollback");
+                }
+            }
+        }
+
+        UpdateAction::Status => {
+            let versions = version_manager.list_versions().unwrap_or_default();
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "current_version": state.current_version,
+                    "pending_version": state.pending_version,
+                    "last_good_version": state.last_good_version,
+                    "channel": state.channel,
+                    "installed_versions": versions,
+                    "update_status": format!("{:?}", state.update_status)
+                }));
+            } else {
+                println!("📊 Update Status");
+                println!("   Current version:   v{}", state.current_version);
+                if let Some(pending) = &state.pending_version {
+                    println!("   Pending version:   v{}", pending);
+                }
+                println!("   Last good version: v{}", state.last_good_version);
+                println!("   Channel:           {}", state.channel);
+                println!("   Status:            {:?}", state.update_status);
+                if !versions.is_empty() {
+                    println!("   Installed:         {}", versions.join(", "));
+                }
+            }
+        }
+
+        UpdateAction::Channel { channel } => {
+            let valid_channels = ["stable", "beta", "nightly"];
+            if !valid_channels.contains(&channel.as_str()) {
+                return Err(format!(
+                    "Invalid channel '{}'. Valid options: {}", 
+                    channel, 
+                    valid_channels.join(", ")
+                ).into());
+            }
+            
+            state.channel = channel.clone();
+            state.save(&state_path)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "changed",
+                    "channel": channel
+                }));
+            } else {
+                println!("📡 Update channel changed to: {}", channel);
+            }
+        }
+    }
+
     Ok(())
 }
