@@ -3,7 +3,7 @@
 //! This binary provides the `airdb` CLI tool for managing projects.
 
 use airdb_lib::engine::{
-    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, OutputFormat},
+    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, OutputFormat},
     config::Config,
     database::Database,
     migrations::MigrationRunner,
@@ -11,7 +11,7 @@ use airdb_lib::engine::{
     api::{ApiState, create_router},
 };
 use clap::Parser;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 fn main() {
@@ -54,6 +54,9 @@ fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Update { action } => {
             cmd_update(action, json_output)?;
+        }
+        Commands::Nosql { action } => {
+            cmd_nosql(action, &project_dir, json_output)?;
         }
     }
 
@@ -978,6 +981,170 @@ fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error
                 }));
             } else {
                 println!("📡 Update channel changed to: {}", channel);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle NoSQL commands
+fn cmd_nosql(action: NoSqlAction, project_dir: &Path, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    use airdb_lib::engine::nosql::{NoSqlEngine, Document, Query, Filter};
+
+    match action {
+        NoSqlAction::Init => {
+            let engine = NoSqlEngine::open_or_create(project_dir)?;
+            let meta = engine.meta();
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "initialized",
+                    "format_version": meta.format_version,
+                    "engine": meta.engine
+                }));
+            } else {
+                println!("✅ NoSQL storage initialized");
+                println!("   Format version: {}", meta.format_version);
+                println!("   Engine: {}", meta.engine);
+            }
+        }
+
+        NoSqlAction::Create { name } => {
+            let engine = NoSqlEngine::open_or_create(project_dir)?;
+            engine.create_collection(&name)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "created",
+                    "collection": name
+                }));
+            } else {
+                println!("✅ Collection '{}' created", name);
+            }
+        }
+
+        NoSqlAction::List => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            let collections = engine.list_collections()?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "collections": collections
+                }));
+            } else {
+                if collections.is_empty() {
+                    println!("No collections found");
+                } else {
+                    println!("📦 Collections:");
+                    for col in collections {
+                        let count = engine.count(&col).unwrap_or(0);
+                        println!("   {} ({} documents)", col, count);
+                    }
+                }
+            }
+        }
+
+        NoSqlAction::Drop { name } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            engine.drop_collection(&name)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "dropped",
+                    "collection": name
+                }));
+            } else {
+                println!("🗑️  Collection '{}' dropped", name);
+            }
+        }
+
+        NoSqlAction::Insert { collection, data } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            let data_value: serde_json::Value = serde_json::from_str(&data)?;
+            let doc = Document::new(data_value);
+            let id = engine.insert(&collection, doc)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "inserted",
+                    "id": id,
+                    "collection": collection
+                }));
+            } else {
+                println!("✅ Document inserted with ID: {}", id);
+            }
+        }
+
+        NoSqlAction::Get { collection, id } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            let doc = engine.get(&collection, &id)?;
+            
+            if json {
+                println!("{}", serde_json::to_string_pretty(&doc)?);
+            } else {
+                println!("{}", serde_json::to_string_pretty(&doc)?);
+            }
+        }
+
+        NoSqlAction::Query { collection, field, value, limit } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            
+            let mut query = Query::new();
+            
+            if let (Some(f), Some(v)) = (field, value) {
+                query = query.filter(Filter::eq(&f, v));
+            }
+            
+            if let Some(n) = limit {
+                query = query.limit(n);
+            }
+            
+            let results = engine.query(&collection, query)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "count": results.len(),
+                    "documents": results
+                }));
+            } else {
+                println!("Found {} documents:", results.len());
+                for doc in results {
+                    println!("---");
+                    println!("{}", serde_json::to_string_pretty(&doc)?);
+                }
+            }
+        }
+
+        NoSqlAction::Delete { collection, id } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            engine.collection(&collection)?.delete(&id)?;
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "status": "deleted",
+                    "id": id
+                }));
+            } else {
+                println!("🗑️  Document '{}' deleted", id);
+            }
+        }
+
+        NoSqlAction::Stats { collection } => {
+            let engine = NoSqlEngine::open(project_dir)?;
+            let count = engine.count(&collection)?;
+            let meta = engine.meta();
+            
+            if json {
+                println!("{}", serde_json::json!({
+                    "collection": collection,
+                    "document_count": count,
+                    "format_version": meta.format_version
+                }));
+            } else {
+                println!("📊 Collection: {}", collection);
+                println!("   Documents: {}", count);
+                println!("   Format: v{}", meta.format_version);
             }
         }
     }

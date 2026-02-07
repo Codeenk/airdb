@@ -7,6 +7,8 @@ pub mod github;
 pub mod keystore;
 pub mod cli;
 pub mod updater;
+pub mod nosql;
 
 pub use config::Config;
 pub use database::Database;
+pub use nosql::NoSqlEngine;

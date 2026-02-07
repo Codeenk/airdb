@@ -98,6 +98,12 @@ pub enum Commands {
         #[command(subcommand)]
         action: UpdateAction,
     },
+
+    /// NoSQL database operations
+    Nosql {
+        #[command(subcommand)]
+        action: NoSqlAction,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -225,6 +231,78 @@ pub enum UpdateAction {
     Channel {
         /// Channel name (stable, beta, nightly)
         channel: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum NoSqlAction {
+    /// Initialize NoSQL storage for this project
+    Init,
+
+    /// Create a new collection
+    Create {
+        /// Collection name
+        name: String,
+    },
+
+    /// List all collections
+    List,
+
+    /// Drop a collection
+    Drop {
+        /// Collection name
+        name: String,
+    },
+
+    /// Insert a document
+    Insert {
+        /// Collection name
+        collection: String,
+        
+        /// JSON data
+        data: String,
+    },
+
+    /// Get a document by ID
+    Get {
+        /// Collection name
+        collection: String,
+        
+        /// Document ID
+        id: String,
+    },
+
+    /// Query documents
+    Query {
+        /// Collection name
+        collection: String,
+        
+        /// Filter field
+        #[arg(short, long)]
+        field: Option<String>,
+        
+        /// Filter value (equality)
+        #[arg(short = 'v', long)]
+        value: Option<String>,
+        
+        /// Limit results
+        #[arg(short, long)]
+        limit: Option<usize>,
+    },
+
+    /// Delete a document
+    Delete {
+        /// Collection name
+        collection: String,
+        
+        /// Document ID
+        id: String,
+    },
+
+    /// Show collection stats
+    Stats {
+        /// Collection name
+        collection: String,
     },
 }
 
