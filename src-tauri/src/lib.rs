@@ -291,6 +291,115 @@ fn resolve_conflict(file: String, strategy: String, state: State<AppState>) -> R
     sync.resolve_conflict(&file, &strategy).map_err(|e| e.to_string())
 }
 
+// ============ Update Commands ============
+
+#[tauri::command]
+fn check_for_updates() -> Result<serde_json::Value, String> {
+    use engine::updater::{VersionManager, UpdateState};
+    
+    let vm = VersionManager::new().map_err(|e| e.to_string())?;
+    vm.init().map_err(|e| e.to_string())?;
+    
+    let state = UpdateState::load(&vm.state_path()).unwrap_or_default();
+    
+    // In production, this would check GitHub releases API
+    Ok(serde_json::json!({
+        "current_version": state.current_version,
+        "update_available": false,
+        "latest_version": state.current_version,
+        "channel": state.channel,
+    }))
+}
+
+#[tauri::command]
+fn get_update_status() -> Result<serde_json::Value, String> {
+    use engine::updater::{VersionManager, UpdateState};
+    
+    let vm = VersionManager::new().map_err(|e| e.to_string())?;
+    vm.init().map_err(|e| e.to_string())?;
+    
+    let state = UpdateState::load(&vm.state_path()).unwrap_or_default();
+    let versions = vm.list_versions().unwrap_or_default();
+    
+    Ok(serde_json::json!({
+        "current_version": state.current_version,
+        "pending_version": state.pending_version,
+        "last_good_version": state.last_good_version,
+        "channel": state.channel,
+        "update_status": format!("{:?}", state.update_status),
+        "installed_versions": versions,
+    }))
+}
+
+#[tauri::command]
+fn set_update_channel(channel: String) -> Result<serde_json::Value, String> {
+    use engine::updater::{VersionManager, UpdateState};
+    
+    let valid_channels = ["stable", "beta", "nightly"];
+    if !valid_channels.contains(&channel.as_str()) {
+        return Err(format!("Invalid channel. Options: {}", valid_channels.join(", ")));
+    }
+    
+    let vm = VersionManager::new().map_err(|e| e.to_string())?;
+    vm.init().map_err(|e| e.to_string())?;
+    
+    let mut state = UpdateState::load(&vm.state_path()).unwrap_or_default();
+    state.channel = channel.clone();
+    state.save(&vm.state_path()).map_err(|e| e.to_string())?;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "channel": channel,
+    }))
+}
+
+#[tauri::command]
+fn apply_update() -> Result<serde_json::Value, String> {
+    use engine::updater::{VersionManager, UpdateState};
+    
+    let vm = VersionManager::new().map_err(|e| e.to_string())?;
+    let state = UpdateState::load(&vm.state_path()).unwrap_or_default();
+    
+    if let Some(pending) = &state.pending_version {
+        Ok(serde_json::json!({
+            "pending": true,
+            "version": pending,
+            "message": "Restart required to apply update",
+        }))
+    } else {
+        Ok(serde_json::json!({
+            "pending": false,
+            "message": "No update pending",
+        }))
+    }
+}
+
+#[tauri::command]
+fn rollback_update() -> Result<serde_json::Value, String> {
+    use engine::updater::{VersionManager, UpdateState};
+    
+    let vm = VersionManager::new().map_err(|e| e.to_string())?;
+    vm.init().map_err(|e| e.to_string())?;
+    
+    let mut state = UpdateState::load(&vm.state_path()).unwrap_or_default();
+    
+    if state.last_good_version == state.current_version {
+        return Ok(serde_json::json!({
+            "success": false,
+            "message": "Already on the oldest version",
+        }));
+    }
+    
+    state.pending_version = Some(state.last_good_version.clone());
+    state.save(&vm.state_path()).map_err(|e| e.to_string())?;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "target_version": state.last_good_version,
+        "message": "Restart to complete rollback",
+    }))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -313,8 +422,12 @@ pub fn run() {
             list_projects,
             list_conflicts,
             resolve_conflict,
+            check_for_updates,
+            get_update_status,
+            set_update_channel,
+            apply_update,
+            rollback_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

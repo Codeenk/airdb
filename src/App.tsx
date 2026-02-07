@@ -41,6 +41,14 @@ interface DeviceCode {
   interval: number;
 }
 
+interface UpdateStatus {
+  current_version: string;
+  update_available: boolean;
+  latest_version: string;
+  channel: string;
+  pending_version?: string;
+}
+
 type Page = 'home' | 'dashboard' | 'migrations' | 'keys' | 'settings' | 'login';
 
 function App() {
@@ -55,10 +63,13 @@ function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [deviceCode, setDeviceCode] = useState<DeviceCode | null>(null);
   const [loginPolling, setLoginPolling] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
     loadProjects();
+    checkForUpdates();
   }, []);
 
   async function checkAuthStatus() {
@@ -76,6 +87,18 @@ function App() {
       setProjects(result);
     } catch (e) {
       console.error('Failed to load projects:', e);
+    }
+  }
+
+  async function checkForUpdates() {
+    try {
+      const result = await invoke<UpdateStatus>('check_for_updates');
+      setUpdateStatus(result);
+      if (result.update_available) {
+        setShowUpdateBanner(true);
+      }
+    } catch (e) {
+      console.error('Failed to check for updates:', e);
     }
   }
 
@@ -238,6 +261,32 @@ function App() {
 
   return (
     <div className="app">
+      {/* Update Banner */}
+      {showUpdateBanner && updateStatus?.update_available && (
+        <div className="update-banner">
+          <span>
+            🎉 Update available: v{updateStatus.latest_version}
+          </span>
+          <button
+            className="btn-small"
+            onClick={() => window.location.reload()}
+          >
+            Update Now
+          </button>
+          <button
+            className="btn-small btn-ghost"
+            onClick={() => setShowUpdateBanner(false)}
+          >
+            Later
+          </button>
+        </div>
+      )}
+
+      {/* Version indicator (always visible) */}
+      <div className="version-badge">
+        v{updateStatus?.current_version || '0.1.0'}
+      </div>
+
       <nav className="sidebar">
         <div className="logo">
           <h2>✨ AirDB</h2>
