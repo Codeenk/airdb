@@ -47,10 +47,58 @@ pub fn disable_autostart() -> Result<AutostartStatus, String> {
 }
 
 fn get_autostart_manager() -> AutostartManager {
-    // Get the bootstrapper path based on current executable
-    let exe_path = std::env::current_exe()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "airdb-bootstrap".to_string());
+    // Always point to the bootstrapper, not the current executable
+    let bootstrapper_path = get_bootstrapper_path();
+    AutostartManager::new("AirDB", &bootstrapper_path)
+}
+
+/// Get the path to the bootstrapper binary
+fn get_bootstrapper_path() -> String {
+    #[cfg(target_os = "linux")]
+    {
+        // Check if installed in system bin
+        if std::path::Path::new("/usr/local/bin/airdb-bootstrap").exists() {
+            return "/usr/local/bin/airdb-bootstrap".to_string();
+        }
+        // Check user local bin
+        if let Some(home) = dirs::home_dir() {
+            let user_bin = home.join(".local/bin/airdb-bootstrap");
+            if user_bin.exists() {
+                return user_bin.to_string_lossy().to_string();
+            }
+            // Fallback to app directory
+            let app_path = home.join(".local/share/airdb/current/airdb-bootstrap");
+            if app_path.exists() {
+                return app_path.to_string_lossy().to_string();
+            }
+        }
+        "airdb-bootstrap".to_string()
+    }
     
-    AutostartManager::new("AirDB", &exe_path)
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local_app_data) = dirs::data_local_dir() {
+            let bootstrapper = local_app_data.join("AirDB").join("bin").join("airdb-bootstrap.exe");
+            if bootstrapper.exists() {
+                return bootstrapper.to_string_lossy().to_string();
+            }
+        }
+        "airdb-bootstrap.exe".to_string()
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = dirs::home_dir() {
+            let bootstrapper = home.join("Library/Application Support/AirDB/bin/airdb-bootstrap");
+            if bootstrapper.exists() {
+                return bootstrapper.to_string_lossy().to_string();
+            }
+        }
+        "airdb-bootstrap".to_string()
+    }
+    
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    {
+        "airdb-bootstrap".to_string()
+    }
 }

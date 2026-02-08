@@ -116,7 +116,7 @@ impl<'a> Enforcer<'a> {
     pub fn filter_fields(
         &self,
         context: &AuthContext,
-        resource_type: ResourceType,
+        _resource_type: ResourceType,
         resource_name: &str,
         document: &Value,
     ) -> (Value, Vec<String>) {

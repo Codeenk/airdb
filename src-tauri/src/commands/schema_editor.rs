@@ -58,7 +58,8 @@ pub fn get_table_schema(
     state: State<AppState>,
     table_name: String,
 ) -> Result<TableSchema, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
     // Get column info using PRAGMA
@@ -300,7 +301,8 @@ pub fn apply_generated_migration(
     use std::fs;
     use std::path::Path;
     
-    let project_dir = state.project_dir.lock().map_err(|e| e.to_string())?;
+    let project_dir_lock = state.project_dir.lock().map_err(|e| e.to_string())?;
+    let project_dir = project_dir_lock.as_ref().ok_or("Project directory not set")?;
     let migrations_dir = project_dir.join("migrations");
     
     // Create migrations directory if needed
@@ -322,7 +324,8 @@ pub fn apply_generated_migration(
     fs::write(&filepath, content).map_err(|e| e.to_string())?;
     
     // Apply migration
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     conn.execute_batch(&up_sql).map_err(|e| e.to_string())?;
     

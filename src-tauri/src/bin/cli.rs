@@ -3,7 +3,7 @@
 //! This binary provides the `airdb` CLI tool for managing projects.
 
 use airdb_lib::engine::{
-    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, SchemaAction, HybridAction, OutputFormat},
+    cli::{Cli, Commands, MigrateAction, KeysAction, AuthAction, SyncAction, UpdateAction, NoSqlAction, SchemaAction, HybridAction, OutputFormat, CliFormatter},
     config::Config,
     database::Database,
     migrations::MigrationRunner,
@@ -279,12 +279,13 @@ fn cmd_status(project_dir: &PathBuf, json: bool) -> Result<(), Box<dyn std::erro
             "tables": tables
         }));
     } else {
-        println!("📊 AirDB Project Status");
-        println!("   Project: {}", config.project.name);
-        println!("   Database: {} ({})", config.database.db_type, config.database.path.display());
-        println!("   API Port: {}", config.api.port);
-        println!("\n   Migrations: {} applied, {} pending", status.applied_count, status.pending_count);
-        println!("   Tables: {}", if tables.is_empty() { "(none)".to_string() } else { tables.join(", ") });
+        CliFormatter::header("AirDB Project Status");
+        CliFormatter::kv("Project", &config.project.name);
+        CliFormatter::kv("Database", &format!("{} ({})", config.database.db_type, config.database.path.display()));
+        CliFormatter::kv("API Port", &config.api.port.to_string());
+        CliFormatter::blank();
+        CliFormatter::kv("Migrations", &format!("{} applied, {} pending", status.applied_count, status.pending_count));
+        CliFormatter::kv("Tables", &if tables.is_empty() { "(none)".to_string() } else { tables.join(", ") });
     }
 
     Ok(())

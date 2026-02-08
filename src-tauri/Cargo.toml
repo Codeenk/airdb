@@ -1,6 +1,6 @@
 [package]
 name = "airdb"
-version = "0.1.0"
+version = "0.2.1"
 description = "AirDB - Local-first, GitHub-backed database platform"
 authors = ["AirDB Team"]
 edition = "2021"
@@ -48,6 +48,7 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # CLI
 clap = { version = "4", features = ["derive"] }
+colored = "2"
 
 # Git operations
 git2 = "0.19"
@@ -80,6 +81,13 @@ futures-util = "0.3"
 # OpenAPI generation
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8", features = ["axum"] }
+
+# System utilities
+which = "7"
+
+# Windows-specific
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
 
 [features]
 default = ["custom-protocol"]

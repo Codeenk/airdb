@@ -1,8 +1,12 @@
 //! AirDB CLI Module
 //! Command-line interface for AirDB operations
 
+pub mod formatter;
+
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+
+pub use formatter::CliFormatter;
 
 #[derive(Parser, Debug)]
 #[command(name = "airdb")]

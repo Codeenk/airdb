@@ -17,6 +17,7 @@ pub mod platform;
 pub mod compatibility;
 pub mod locks;
 pub mod autostart;
+pub mod installer;
 
 pub use config::Config;
 pub use database::Database;
@@ -30,4 +31,5 @@ pub use platform::{Platform, PlatformConfig};
 pub use compatibility::{VersionMatrix, CompatibilityTester, UpdateNotification};
 pub use locks::{OperationLock, LockType, LockGuard};
 pub use autostart::{AutostartManager, AutostartStatus};
+pub use installer::{Installer, InstallInfo};
 
