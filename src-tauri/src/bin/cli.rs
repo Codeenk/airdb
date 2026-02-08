@@ -61,6 +61,9 @@ fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Hybrid { action } => {
             cmd_hybrid(action, &project_dir, json_output)?;
         }
+        Commands::Info => {
+            cmd_info(&project_dir, json_output)?;
+        }
     }
 
     Ok(())
@@ -284,6 +287,122 @@ fn cmd_status(project_dir: &PathBuf, json: bool) -> Result<(), Box<dyn std::erro
         println!("   Tables: {}", if tables.is_empty() { "(none)".to_string() } else { tables.join(", ") });
     }
 
+    Ok(())
+}
+
+fn cmd_info(project_dir: &PathBuf, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    use airdb_lib::engine::observability::{Metrics, HealthDashboardGenerator};
+    use airdb_lib::engine::platform::Platform;
+    use std::fs;
+    
+    let config = Config::load(project_dir)?;
+    let db_path = project_dir.join(&config.database.path);
+    let db = Database::new(&db_path)?;
+    let runner = MigrationRunner::new(project_dir);
+    let status = runner.check(&db)?;
+    let tables = db.get_tables()?;
+    
+    // Get metrics
+    let metrics = Metrics::load(project_dir).unwrap_or_default();
+    
+    // Get health
+    let health_gen = HealthDashboardGenerator::new();
+    let health = health_gen.generate(project_dir).ok();
+    
+    // Check for nosql
+    let nosql_path = project_dir.join("nosql");
+    let nosql_collections: Vec<String> = if nosql_path.exists() {
+        fs::read_dir(&nosql_path)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().is_dir() && !e.file_name().to_string_lossy().starts_with('_'))
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        vec![]
+    };
+    
+    // Platform info
+    let platform = Platform::current();
+    
+    if json {
+        println!("{}", serde_json::json!({
+            "version": env!("CARGO_PKG_VERSION"),
+            "platform": format!("{:?}", platform),
+            "project": {
+                "name": config.project.name,
+                "dir": project_dir.display().to_string()
+            },
+            "database": {
+                "type": config.database.db_type,
+                "path": config.database.path.display().to_string(),
+                "tables": tables
+            },
+            "nosql": {
+                "collections": nosql_collections
+            },
+            "migrations": {
+                "applied": status.applied_count,
+                "pending": status.pending_count
+            },
+            "api": {
+                "port": config.api.port
+            },
+            "metrics": {
+                "total_updates": metrics.updates.total_updates,
+                "rollback_count": metrics.updates.rollback_count,
+                "update_success_rate": metrics.updates.success_rate()
+            },
+            "health": health.as_ref().map(|h| format!("{:?}", h.overall_status))
+        }));
+    } else {
+        println!("\n╔══════════════════════════════════════════╗");
+        println!("║         AirDB Project Information         ║");
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ Version: {:<31} ║", env!("CARGO_PKG_VERSION"));
+        println!("║ Platform: {:<30} ║", format!("{:?}", platform));
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ 📁 Project                                ║");
+        println!("║   Name: {:<32} ║", config.project.name);
+        println!("║   Dir: {:<33} ║", 
+            project_dir.file_name().unwrap_or_default().to_string_lossy());
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ 🗃️  SQL Database                           ║");
+        println!("║   Type: {:<32} ║", config.database.db_type);
+        println!("║   Tables: {:<30} ║", 
+            if tables.is_empty() { "(none)".to_string() } else { tables.len().to_string() });
+        println!("║   Migrations: {} applied, {} pending{} ║", 
+            status.applied_count, status.pending_count,
+            " ".repeat(16 - status.applied_count.to_string().len() - status.pending_count.to_string().len()));
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ 📦 NoSQL Collections                      ║");
+        if nosql_collections.is_empty() {
+            println!("║   (none)                                  ║");
+        } else {
+            for coll in nosql_collections.iter().take(5) {
+                println!("║   • {:<36} ║", coll);
+            }
+            if nosql_collections.len() > 5 {
+                println!("║   ... and {} more                        ║", nosql_collections.len() - 5);
+            }
+        }
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ 📊 Metrics                                ║");
+        println!("║   Updates: {:<29} ║", metrics.updates.total_updates);
+        println!("║   Rollbacks: {:<27} ║", metrics.updates.rollback_count);
+        println!("║   Success Rate: {:<23} ║", format!("{:.1}%", metrics.updates.success_rate()));
+        println!("╠══════════════════════════════════════════╣");
+        println!("║ 🔧 API                                    ║");
+        println!("║   Port: {:<32} ║", config.api.port);
+        if let Some(h) = health.as_ref() {
+            println!("║   Health: {:<30} ║", format!("{:?}", h.overall_status));
+        }
+        println!("╚══════════════════════════════════════════╝\n");
+    }
+    
     Ok(())
 }
 

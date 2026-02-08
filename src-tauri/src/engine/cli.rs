@@ -110,6 +110,9 @@ pub enum Commands {
         #[command(subcommand)]
         action: HybridAction,
     },
+
+    /// Display detailed project information
+    Info,
 }
 
 #[derive(Subcommand, Debug)]

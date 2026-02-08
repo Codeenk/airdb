@@ -446,6 +446,18 @@ pub fn run() {
             commands::hybrid_create_relation,
             commands::hybrid_list_relations,
             commands::hybrid_query,
+            // Installer
+            commands::installer::check_path_status,
+            commands::installer::add_to_path,
+            // Autostart
+            commands::autostart::get_autostart_status,
+            commands::autostart::enable_autostart,
+            commands::autostart::disable_autostart,
+            // Schema Editor
+            commands::schema_editor::get_tables,
+            commands::schema_editor::get_table_schema,
+            commands::schema_editor::generate_table_migration,
+            commands::schema_editor::apply_generated_migration,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

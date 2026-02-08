@@ -15,6 +15,8 @@ pub mod audit;
 pub mod observability;
 pub mod platform;
 pub mod compatibility;
+pub mod locks;
+pub mod autostart;
 
 pub use config::Config;
 pub use database::Database;
@@ -26,4 +28,9 @@ pub use audit::{AuditLog, AuditEntry, AuditAction, BackupManager, Backup};
 pub use observability::{Metrics, MetricsCollector, HealthDashboard, HealthDashboardGenerator};
 pub use platform::{Platform, PlatformConfig};
 pub use compatibility::{VersionMatrix, CompatibilityTester, UpdateNotification};
+pub use locks::{OperationLock, LockType, LockGuard};
+pub use autostart::{AutostartManager, AutostartStatus};
+pub use installer::{PathSetup, PathStatus};
+
+pub mod installer;
 
