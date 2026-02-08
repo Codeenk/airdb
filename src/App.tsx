@@ -67,7 +67,6 @@ function App() {
   const [deviceCode, setDeviceCode] = useState<DeviceCode | null>(null);
   const [loginPolling, setLoginPolling] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
@@ -97,9 +96,6 @@ function App() {
     try {
       const result = await invoke<UpdateStatus>('check_for_updates');
       setUpdateStatus(result);
-      if (result.update_available) {
-        setShowUpdateBanner(true);
-      }
     } catch (e) {
       console.error('Failed to check for updates:', e);
     }
