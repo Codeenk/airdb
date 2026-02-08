@@ -5,9 +5,6 @@
 use tauri::State;
 use serde::{Deserialize, Serialize};
 use crate::AppState;
-use rusqlite::Connection;
-
-// ... structs ...
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Column {
@@ -55,34 +52,13 @@ pub struct MigrationPreview {
     pub name: String,
 }
 
-/// Get all tables
-#[tauri::command]
-pub fn get_tables(state: State<AppState>) -> Result<Vec<String>, String> {
-    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    let conn = db.get_connection().map_err(|e| e.to_string())?;
-    
-    let mut stmt = conn
-        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '_migrations'")
-        .map_err(|e| e.to_string())?;
-    
-    let tables: Vec<String> = stmt
-        .query_map([], |row| row.get(0))
-        .map_err(|e| e.to_string())?
-        .filter_map(|r| r.ok())
-        .collect();
-    
-    Ok(tables)
-}
-
 /// Get table schema
 #[tauri::command]
 pub fn get_table_schema(
     state: State<AppState>,
     table_name: String,
 ) -> Result<TableSchema, String> {
-    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
+    let db = state.db.lock().map_err(|e| e.to_string())?;
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
     // Get column info using PRAGMA
@@ -346,10 +322,9 @@ pub fn apply_generated_migration(
     fs::write(&filepath, content).map_err(|e| e.to_string())?;
     
     // Apply migration
-    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
+    let db = state.db.lock().map_err(|e| e.to_string())?;
     let conn = db.get_connection().map_err(|e| e.to_string())?;
-    conn.execute_batch(&up_sql).map_err(|e: rusqlite::Error| e.to_string())?;
+    conn.execute_batch(&up_sql).map_err(|e| e.to_string())?;
     
     Ok(())
 }

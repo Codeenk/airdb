@@ -47,7 +47,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,16 +59,10 @@ jobs:
             
             Download the installer for your platform below.
             
-            ### Desktop App
-             - **Linux**: `.AppImage`, `.deb`
-             - **macOS**: `.dmg`
-             - **Windows**: `.msi`
-            
-            ### CLI
-             - **Binary**: `airdb-cli` (in assets)
-            
             ### Installation
-            See [Documentation](https://github.com/Codeenk/airdb/tree/main/docs) for setup guides.
+            - **Linux**: Download `.AppImage` or `.deb`
+            - **macOS**: Download `.dmg`
+            - **Windows**: Download `.msi` or `.exe`
             
             ### Self-Update
             AirDB includes automatic update checking. You can also run:
@@ -77,26 +71,6 @@ jobs:
             ```
           releaseDraft: true
           prerelease: false
-
-      - name: Build CLI
-        run: |
-          cd src-tauri
-          cargo build --release --bin airdb-cli
-          cd ..
-
-      - name: Unix CLI Binary Path
-        if: matrix.platform.target != 'windows'
-        run: |
-          mv src-tauri/target/release/airdb-cli src-tauri/target/release/airdb-cli-${{ matrix.platform.target }}
-
-      - name: Upload CLI Artifacts
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            src-tauri/target/release/airdb-cli-${{ matrix.platform.target }}
-            src-tauri/target/release/airdb-cli.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Generate update manifest after all builds complete
   manifest:

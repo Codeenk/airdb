@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { TableEditor } from './components/TableEditor';
-import { UpdateSettings } from './components/UpdateSettings';
-import { UpdateBanner } from './components/UpdateBanner';
 import './App.css';
 
 interface ProjectStatus {
@@ -52,7 +49,7 @@ interface UpdateStatus {
   pending_version?: string;
 }
 
-type Page = 'home' | 'dashboard' | 'tables' | 'migrations' | 'keys' | 'settings' | 'updates' | 'login';
+type Page = 'home' | 'dashboard' | 'migrations' | 'keys' | 'settings' | 'login';
 
 function App() {
   const [page, setPage] = useState<Page>('home');
@@ -67,6 +64,7 @@ function App() {
   const [deviceCode, setDeviceCode] = useState<DeviceCode | null>(null);
   const [loginPolling, setLoginPolling] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
@@ -96,6 +94,9 @@ function App() {
     try {
       const result = await invoke<UpdateStatus>('check_for_updates');
       setUpdateStatus(result);
+      if (result.update_available) {
+        setShowUpdateBanner(true);
+      }
     } catch (e) {
       console.error('Failed to check for updates:', e);
     }
@@ -261,7 +262,25 @@ function App() {
   return (
     <div className="app">
       {/* Update Banner */}
-      <UpdateBanner />
+      {showUpdateBanner && updateStatus?.update_available && (
+        <div className="update-banner">
+          <span>
+            🎉 Update available: v{updateStatus.latest_version}
+          </span>
+          <button
+            className="btn-small"
+            onClick={() => window.location.reload()}
+          >
+            Update Now
+          </button>
+          <button
+            className="btn-small btn-ghost"
+            onClick={() => setShowUpdateBanner(false)}
+          >
+            Later
+          </button>
+        </div>
+      )}
 
       {/* Version indicator (always visible) */}
       <div className="version-badge">
@@ -281,11 +300,6 @@ function App() {
           <li className={page === 'dashboard' ? 'active' : ''}>
             <button onClick={() => setPage('dashboard')} disabled={!status?.initialized}>
               📊 Dashboard
-            </button>
-          </li>
-          <li className={page === 'tables' ? 'active' : ''}>
-            <button onClick={() => setPage('tables')} disabled={!status?.initialized}>
-              📋 Tables
             </button>
           </li>
           <li className={page === 'migrations' ? 'active' : ''}>
@@ -545,13 +559,6 @@ function App() {
           </div>
         )}
 
-        {page === 'tables' && (
-          <div className="page tables-page">
-            <h1>Schema Editor</h1>
-            <TableEditor />
-          </div>
-        )}
-
         {page === 'settings' && (
           <div className="page settings">
             <h1>Settings</h1>
@@ -576,32 +583,6 @@ function App() {
                 </div>
               )}
             </div>
-
-            <UpdateSettings />
-
-            <div className="card">
-              <h3>System</h3>
-              <div className="settings-row">
-                <div>
-                  <p><strong>CLI PATH Status</strong></p>
-                  <p className="text-muted">Check if airdb is in your system PATH</p>
-                </div>
-                <button
-                  className="btn"
-                  onClick={async () => {
-                    try {
-                      await invoke('add_to_path');
-                      alert('Added to PATH!');
-                    } catch (e) {
-                      alert('Error: ' + e);
-                    }
-                  }}
-                >
-                  Add to PATH
-                </button>
-              </div>
-            </div>
-
             <div className="card">
               <h3>About</h3>
               <p>AirDB v0.1.0</p>

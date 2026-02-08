@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { IndexManager } from './IndexManager';
 import './TableEditor.css';
 
 interface Column {
@@ -313,21 +312,6 @@ export function TableEditor() {
                                 </tbody>
                             </table>
                         </div>
-
-                        {selectedTable && !isCreatingTable && (
-                            <IndexManager
-                                tableName={selectedTable}
-                                availableColumns={tableData?.columns.map(c => c.name) || []}
-                                onMigrationGenerated={(upSql, downSql) => {
-                                    setMigrationPreview({
-                                        upSql,
-                                        downSql,
-                                        version: Math.floor(Date.now() / 1000) % 1000000,
-                                        name: 'index_change'
-                                    });
-                                }}
-                            />
-                        )}
 
                         <div className="actions-bar">
                             <button className="btn-secondary" onClick={cancelEdit}>

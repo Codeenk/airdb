@@ -30,7 +30,4 @@ pub use platform::{Platform, PlatformConfig};
 pub use compatibility::{VersionMatrix, CompatibilityTester, UpdateNotification};
 pub use locks::{OperationLock, LockType, LockGuard};
 pub use autostart::{AutostartManager, AutostartStatus};
-pub use installer::{PathSetup, PathStatus};
-
-pub mod installer;
 

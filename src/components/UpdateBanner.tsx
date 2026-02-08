@@ -27,11 +27,11 @@ export function UpdateBanner() {
         if (state.dismissed) return;
 
         try {
-            const result = await invoke<{ update_available: boolean; latest_version: string }>('check_for_updates');
-            if (result.update_available) {
+            const result = await invoke<{ updateAvailable: boolean; version: string }>('check_update_available');
+            if (result.updateAvailable) {
                 setState({
                     visible: true,
-                    version: result.latest_version,
+                    version: result.version,
                     dismissed: false,
                 });
             }
