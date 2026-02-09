@@ -78,7 +78,7 @@ jobs:
             ```bash
             airdb update check
             ```
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
 
   # Generate update manifest after all builds complete
