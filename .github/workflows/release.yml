@@ -47,6 +47,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Prepare Sidecars
         run: |
           chmod +x src-tauri/scripts/prep-sidecars.sh
