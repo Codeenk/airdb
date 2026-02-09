@@ -83,9 +83,9 @@ impl Installer {
         
         // Copy binaries
         let binaries = vec![
-            ("airdb.exe", "airdb-bootstrap.exe"),
-            ("airdb-bootstrap.exe", "airdb-bootstrap.exe"),
+            ("airdb.exe", "airdb-cli.exe"),
             ("airdb-cli.exe", "airdb-cli.exe"),
+            ("airdb-bootstrap.exe", "airdb-bootstrap.exe"),
         ];
         
         for (target_name, source_name) in binaries {
@@ -137,21 +137,24 @@ impl Installer {
     // ============ Linux Implementation ============
     
     #[cfg(target_os = "linux")]
-    fn install_linux(&self, source_binaries: &Path) -> Result<InstallInfo, InstallerError> {
+    fn install_linux(&self, _source_binaries: &Path) -> Result<InstallInfo, InstallerError> {
         let bin_dir = Self::get_bin_dir()?;
         fs::create_dir_all(&bin_dir)
             .map_err(|e| InstallerError::IoError(e.to_string()))?;
         
+        // Create symlinks to the versioned binaries
+        let current_version_dir = dirs::home_dir()
+            .ok_or(InstallerError::NoHomeDir)?
+            .join(".local/share/airdb/current");
+        
         let binaries = vec![
-            ("airdb", "airdb-cli"), // Link 'airdb' to the CLI binary
+            ("airdb", "airdb-cli"),
             ("airdb-cli", "airdb-cli"),
+            ("airdb-bootstrap", "airdb-bootstrap"),
         ];
         
         for (link_name, target_name) in binaries {
-            // Target is in the source_binaries directory (sidecar)
-            // Note: Tauri may strip target triple from sidecar name in bundle
-            // If strict triple is needed, we might need to check for it
-            let target = source_binaries.join(target_name);
+            let target = current_version_dir.join(target_name);
             let link = bin_dir.join(link_name);
             
             // Remove existing symlink/file
@@ -170,13 +173,12 @@ impl Installer {
             .split(':')
             .any(|p| p == bin_dir.to_string_lossy());
         
-        // ... message generation ...
         let message = if !path_in_env {
             format!(
                 "⚠️  {} is not in your PATH.\n\
-                 Add this line to your ~/.bashrc or ~/.zshrc:\n\
-                 export PATH=\"$HOME/.local/bin:$PATH\"",
-                 bin_dir.display()
+                Add this line to your ~/.bashrc or ~/.zshrc:\n\
+                export PATH=\"$HOME/.local/bin:$PATH\"",
+                bin_dir.display()
             )
         } else {
             "✅ Installed successfully!".to_string()
@@ -204,7 +206,8 @@ impl Installer {
             .join("Library/Application Support/AirDB/current");
         
         let binaries = vec![
-            ("airdb", "airdb-bootstrap"),
+            ("airdb", "airdb-cli"),
+            ("airdb-cli", "airdb-cli"),
             ("airdb-bootstrap", "airdb-bootstrap"),
         ];
         

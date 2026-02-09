@@ -38,6 +38,11 @@ This release marks full productization layer completion for public beta.
 - README now includes Visual SQL Editor feature highlight
 - Architecture diagram updated with new components
 
+### 🐛 Fixed
+
+- Bundled `airdb-cli` and `airdb-bootstrap` into Linux/Windows installers
+- Installer PATH setup now maps `airdb` to the CLI and exposes `airdb-cli`
+
 ---
 
 ## [0.2.1] - 2026-02-08

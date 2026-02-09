@@ -99,6 +99,27 @@ cargo build --release --bin airdb-bootstrap --quiet
 
 log_success "All binaries built"
 
+# Step 5b: Stage sidecar binaries for Tauri
+log_info "Staging sidecar binaries for Tauri..."
+
+TARGET_DIR="$PROJECT_ROOT/src-tauri/target/release"
+TARGET_TRIPLE=$(rustc -vV | sed -n 's/^host: //p' | tr -d '\r')
+BIN_EXT=""
+if [[ "$TARGET_TRIPLE" == *"windows"* ]]; then
+    BIN_EXT=".exe"
+fi
+
+SIDECAR_DIR="$PROJECT_ROOT/src-tauri/bin"
+mkdir -p "$SIDECAR_DIR"
+cp "$TARGET_DIR/airdb-cli$BIN_EXT" "$SIDECAR_DIR/airdb-cli-$TARGET_TRIPLE$BIN_EXT"
+cp "$TARGET_DIR/airdb-bootstrap$BIN_EXT" "$SIDECAR_DIR/airdb-bootstrap-$TARGET_TRIPLE$BIN_EXT"
+
+if [[ "$BIN_EXT" == "" ]]; then
+    chmod +x "$SIDECAR_DIR/airdb-cli-$TARGET_TRIPLE" "$SIDECAR_DIR/airdb-bootstrap-$TARGET_TRIPLE"
+fi
+
+log_success "Sidecar binaries staged"
+
 # Step 6: Create release directory structure
 log_info "Creating release directory..."
 mkdir -p "$RELEASE_DIR"/{linux,windows,macos}
@@ -106,8 +127,6 @@ mkdir -p "$RELEASE_DIR/checksums"
 
 # Step 7: Copy binaries
 log_info "Copying binaries..."
-
-TARGET_DIR="$PROJECT_ROOT/src-tauri/target/release"
 
 # Determine platform
 PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
