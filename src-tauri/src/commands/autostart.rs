@@ -2,8 +2,6 @@
 //!
 //! Commands for managing system autostart
 
-use tauri::State;
-use crate::AppState;
 use crate::engine::autostart::{AutostartManager, AutostartStatus};
 
 /// Get autostart status

@@ -141,6 +141,7 @@ impl PlatformConfig {
 /// macOS-specific utilities
 pub mod macos {
     use std::path::Path;
+    #[cfg(target_os = "macos")]
     use std::process::Command;
 
     /// Check if running from a signed app bundle
@@ -198,7 +199,6 @@ pub mod macos {
 
 /// Linux-specific utilities
 pub mod linux {
-    use std::path::Path;
 
     /// Check if running from AppImage
     pub fn is_appimage() -> bool {

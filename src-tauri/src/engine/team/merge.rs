@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
 
 /// Merge strategy options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

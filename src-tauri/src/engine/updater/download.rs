@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
-use std::io::{self, Write, Read};
+use std::io::{self, Write};
 use reqwest::header::{RANGE, CONTENT_LENGTH, ACCEPT_RANGES};
 
 /// Download result with metadata

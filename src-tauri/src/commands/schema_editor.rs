@@ -355,7 +355,6 @@ pub fn apply_generated_migration(
     down_sql: String,
 ) -> Result<(), String> {
     use std::fs;
-    use std::path::Path;
     
     let project_dir_lock = state.project_dir.lock().map_err(|e| e.to_string())?;
     let project_dir = project_dir_lock.as_ref().ok_or("Project directory not set")?;

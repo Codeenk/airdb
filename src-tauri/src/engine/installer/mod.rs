@@ -4,7 +4,6 @@
 
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::io;
 
 #[derive(Debug, Clone)]
 pub struct Installer {

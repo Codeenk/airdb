@@ -2,7 +2,7 @@
 //! 
 //! Manages the versioned filesystem layout and atomic version switching.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs;
 use std::io;
 

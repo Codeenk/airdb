@@ -3,7 +3,6 @@
 //! Version matrix tests, upgrade path verification, and downgrade safety
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::Path;
 use chrono::{DateTime, Utc};
 

@@ -18,7 +18,6 @@
 
 use std::env;
 use std::process::{Command, ExitCode};
-use std::path::PathBuf;
 
 mod bootstrap_core {
     use std::path::{Path, PathBuf};

@@ -3,7 +3,6 @@
 //! Cross-platform system boot integration for AirDB
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 
 /// Autostart status
 #[derive(Debug, Clone, Serialize, Deserialize)]
