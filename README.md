@@ -1,131 +1,137 @@
-# AirDB
+# 🗄️ AirDB
 
-**Local-first, GitHub-backed database platform for schema management and API generation.**
+**The local-first, GitHub-backed database platform for schema management and API generation.**
 
 [![CI](https://github.com/Codeenk/airdb/actions/workflows/ci.yml/badge.svg)](https://github.com/Codeenk/airdb/actions/workflows/ci.yml)
-[![Release](https://github.com/Codeenk/airdb/releases/latest/badge.svg)](https://github.com/Codeenk/airdb/releases)
+[![Release](https://img.shields.io/badge/release-v0.2.5-22d3ee)](https://github.com/Codeenk/airdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](https://github.com/Codeenk/airdb/releases)
 
 ---
 
-## 🚀 Features
+## ✨ Why AirDB?
 
-- **📦 Local-First SQLite** - Work offline, sync when ready
-- **🔄 GitHub Sync** - Version control for your database schema
-- **🔐 OAuth Authentication** - Secure device flow login
-- **👥 Team Collaboration** - Invite collaborators with role-based access
-- **⚔️ Conflict Resolution** - Smart merge conflict handling for schema changes
-- **🔑 API Key Management** - Generate and rotate API keys
-- **🖥️ Desktop UI** - Cross-platform Tauri app (Linux, macOS, Windows)
-- **⚡ CLI** - Full-featured command-line interface
-- **📡 Auto-Generated REST API** - OpenAPI spec + Swagger UI
+Traditional databases lock you into cloud services. AirDB gives you **full ownership**:
+
+- 🔒 **Your data stays local** - SQLite on your machine, no cloud required
+- 📂 **Version control built-in** - GitHub syncs your schema like code
+- 🔄 **Safe rollbacks** - Every change generates reversible migrations
+- 👥 **Team collaboration** - Branch isolation, RBAC, and conflict resolution
+- ⚡ **Instant REST API** - Auto-generated with OpenAPI + Swagger UI
 
 ---
 
-## 📥 Installation
+## 🚀 Quick Start
 
-### Linux
+### Installation
+
+<details>
+<summary><b>Linux</b></summary>
+
 ```bash
 # AppImage (portable)
-chmod +x airdb_0.1.0_amd64.AppImage
-./airdb_0.1.0_amd64.AppImage
+chmod +x airdb_0.2.5_amd64.AppImage
+./airdb_0.2.5_amd64.AppImage
 
 # Debian/Ubuntu
-sudo dpkg -i airdb_0.1.0_amd64.deb
+sudo dpkg -i airdb_0.2.5_amd64.deb
 ```
+</details>
 
-### macOS
+<details>
+<summary><b>macOS</b></summary>
+
 ```bash
-# Download and open the .dmg file
-open AirDB_0.1.0_aarch64.dmg
+open AirDB_0.2.5_aarch64.dmg
+# Drag to Applications
 ```
+</details>
 
-### Windows
+<details>
+<summary><b>Windows</b></summary>
+
 ```powershell
-# Run the MSI installer
-.\AirDB_0.1.0_x64_en-US.msi
+.\AirDB_0.2.5_x64_en-US.msi
 ```
+</details>
 
-Download the latest release from [GitHub Releases](https://github.com/Codeenk/airdb/releases).
+### Create Your First Project
+
+```bash
+# Initialize
+airdb init my-project && cd my-project
+
+# Create a table via migration
+airdb migrate create add_users_table
+# Edit: sql/migrations/001_add_users_table.sql
+
+# Apply migration
+airdb migrate push
+
+# Start API server
+airdb serve
+# → http://localhost:54321/swagger-ui
+```
 
 ---
 
-## ⚡ Quick Start
+## 🖥️ Features
 
-### 1. Initialize a Project
+### Visual SQL Editor (NEW in v0.2.5)
+
+Edit tables, columns, indexes, and constraints visually. **Every change generates a migration** - impossible to break production with a click.
+
+| Feature | Description |
+|---------|-------------|
+| 📋 Table Editor | Create/modify tables with full column options |
+| 📇 Index Manager | Add/remove indexes with unique support |
+| 🔗 Constraint Editor | Foreign keys and check constraints |
+| 👁️ Migration Preview | Review SQL before applying |
+
+### GitHub Sync
+
+Your database schema versioned alongside your code:
+
 ```bash
-airdb init my-project
-cd my-project
-```
-
-### 2. Create a Migration
-```bash
-airdb migrate create add_users_table
-```
-
-Edit the generated SQL file in `sql/migrations/`:
-```sql
--- up
-CREATE TABLE users (
-  id INTEGER PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- down
-DROP TABLE users;
-```
-
-### 3. Apply Migration
-```bash
-airdb migrate push
-```
-
-### 4. Authenticate with GitHub
-```bash
-airdb auth login
-```
-
-### 5. Sync to GitHub
-```bash
-airdb sync setup --create
+airdb auth login              # OAuth device flow
+airdb sync setup --create     # Initialize repo
 airdb sync push -m "Add users table"
+airdb sync pull               # Get team changes
 ```
 
-### 6. Start API Server
+### Self-Updating with Rollback
+
 ```bash
-airdb serve
-# API available at http://localhost:54321
-# Swagger UI at http://localhost:54321/swagger-ui
+airdb update check    # Check for updates
+airdb update apply    # Download & apply
+# Problems? Automatic rollback on crash
 ```
+
+### Team Features
+
+- **Role-based access**: `admin`, `developer`, `readonly`
+- **Branch isolation**: Work without conflicts
+- **Smart merging**: Auto-resolve non-conflicting changes
+- **Conflict resolution**: `--ours` / `--theirs` strategies
 
 ---
 
 ## 📚 Documentation
 
-- **[Getting Started Guide](docs/getting-started.md)** - Step-by-step tutorial
-- **[Conflict Resolution](docs/conflict-resolution.md)** - Handling merge conflicts
-- **[Security Best Practices](docs/security.md)** - Secure deployment guide
-
----
-
-## 🛠️ CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `airdb init <name>` | Initialize a new project |
-| `airdb migrate create <name>` | Create a new migration |
-| `airdb migrate push` | Apply pending migrations |
-| `airdb auth login` | Authenticate with GitHub |
-| `airdb auth logout` | Sign out |
-| `airdb sync setup --create` | Initialize GitHub repository |
-| `airdb sync push -m <msg>` | Push changes to GitHub |
-| `airdb sync pull` | Pull changes from GitHub |
-| `airdb sync conflicts` | List merge conflicts |
-| `airdb sync resolve <file> --ours\|--theirs` | Resolve conflicts |
-| `airdb invite <username> --role <role>` | Invite team member |
-| `airdb keys create <name> --role <role>` | Generate API key |
-| `airdb serve` | Start REST API server |
+| Guide | Description |
+|-------|-------------|
+| **[Introduction](docs/introduction.md)** | What is AirDB and why use it |
+| **[Installation](docs/installation.md)** | Platform-specific install guides |
+| **[Quick Start](docs/quickstart.md)** | 5-minute getting started |
+| **[CLI Reference](docs/cli-reference.md)** | All CLI commands |
+| **[SQL Guide](docs/sql-guide.md)** | Working with SQL databases |
+| **[NoSQL Guide](docs/nosql-guide.md)** | Working with document storage |
+| **[Migrations](docs/migrations.md)** | Schema versioning explained |
+| **[Updates & Rollback](docs/updates-and-rollback.md)** | Self-updater system |
+| **[Team Workflows](docs/team-workflows.md)** | Collaboration patterns |
+| **[Conflict Resolution](docs/conflict-resolution.md)** | Handling merge conflicts |
+| **[Security](docs/security.md)** | Security model & best practices |
+| **[FAQ](docs/faq.md)** | Common questions |
 
 ---
 
@@ -133,93 +139,98 @@ airdb serve
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              Desktop UI (Tauri)                 │
-│         React + TypeScript + Vite               │
+│           Desktop UI (Tauri + React)            │
+│  • Visual Table Editor   • Update Settings      │
+│  • NoSQL Browser         • GitHub Auth          │
 └──────────────────┬──────────────────────────────┘
                    │ IPC
 ┌──────────────────▼──────────────────────────────┐
-│           Rust Engine (Core)                    │
-│  • Migration Runner  • GitHub Sync              │
-│  • SQLite WAL Mode   • OAuth Device Flow        │
-│  • API Generator     • Keyring Storage          │
+│              Rust Engine (Core)                 │
+│  • Migration Runner    • Operation Locks        │
+│  • GitHub Sync         • Self-Updater           │
+│  • REST API Gen        • RBAC Enforcer          │
 └──────────────────┬──────────────────────────────┘
                    │
          ┌─────────┴─────────┐
          ▼                   ▼
-    SQLite DB          GitHub Repo
-    (Local)            (Remote Sync)
+    SQLite DB           GitHub Repo
+    (Local)             (Remote)
 ```
 
 ---
 
-## 🤝 Team Collaboration
+## 🛠️ CLI Commands
 
-AirDB supports team workflows:
+```bash
+# Project
+airdb init <name>              # Create project
+airdb status                   # Project status
+airdb info                     # Detailed health
 
-1. **Invite collaborators:**
-   ```bash
-   airdb invite alice --role developer
-   ```
+# Migrations
+airdb migrate create <name>    # Create migration
+airdb migrate push             # Apply pending
+airdb migrate status           # Check status
 
-2. **Role-based access:**
-   - `admin` - Full repository access
-   - `developer` - Push access
-   - `readonly` - Pull-only access
+# GitHub Sync
+airdb auth login/logout        # Authentication
+airdb sync setup --create      # Init repo
+airdb sync push/pull           # Sync changes
+airdb sync conflicts           # List conflicts
+airdb sync resolve <file>      # Resolve conflict
 
-3. **Conflict resolution:**
-   ```bash
-   airdb sync pull
-   # If conflicts occur:
-   airdb sync conflicts
-   airdb sync resolve migration.sql --ours
-   airdb sync push
-   ```
+# API
+airdb serve                    # Start REST API
+
+# Team
+airdb invite <user> --role <role>
+airdb keys create <name>       # API key
+
+# Updates
+airdb update check/apply       # Self-update
+```
 
 ---
 
 ## 🔐 Security
 
-- **GitHub tokens** stored in OS keyring (Keychain/Credential Manager/Secret Service)
-- **API keys** hashed with SHA-256
-- **Role-based access control** for team members
-- **OAuth device flow** - no password storage
+- **Tokens**: Stored in OS keyring (Keychain/DPAPI/Secret Service)
+- **API Keys**: SHA-256 hashed
+- **Updates**: Ed25519 signature verification
+- **RBAC**: Enforced at engine level
 
-See [Security Best Practices](docs/security.md) for deployment guidelines.
+See [Security Guide](docs/security.md) for deployment best practices.
 
 ---
 
 ## 🧪 Development
 
-### Build from Source
 ```bash
-# Install dependencies
+# Prerequisites: Node.js, Rust, Tauri CLI
+
+# Frontend
 npm install
+npm run dev
 
-# Build CLI
+# Backend
 cd src-tauri
-cargo build --bin airdb-cli
-
-# Build Desktop App
-npm run tauri build
-```
-
-### Run Tests
-```bash
-cd src-tauri
+cargo build --release
 cargo test
+
+# Desktop App
+npm run tauri build
 ```
 
 ---
 
 ## 📝 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 Built With
 
-Built with:
 - [Tauri](https://tauri.app/) - Desktop framework
 - [Rust](https://www.rust-lang.org/) - Core engine
 - [React](https://react.dev/) - UI framework
@@ -228,4 +239,8 @@ Built with:
 
 ---
 
-**Made with ❤️ by the AirLabs Team**
+<p align="center">
+  <strong>Made with ❤️ by the AirLabs Team</strong><br>
+  <a href="https://github.com/Codeenk/airdb/issues">Report Bug</a> •
+  <a href="https://github.com/Codeenk/airdb/discussions">Request Feature</a>
+</p>

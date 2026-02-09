@@ -52,6 +52,62 @@ pub struct MigrationPreview {
     pub name: String,
 }
 
+/// Get list of all user tables
+#[tauri::command]
+pub fn get_tables(state: State<AppState>) -> Result<Vec<String>, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_airdb_%' ORDER BY name")
+        .map_err(|e| e.to_string())?;
+    
+    let tables: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+    
+    Ok(tables)
+}
+
+/// Get table indexes
+#[tauri::command]
+pub fn get_table_indexes(
+    state: State<AppState>,
+    table_name: String,
+) -> Result<Vec<Index>, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    
+    let mut idx_stmt = conn
+        .prepare(&format!("PRAGMA index_list('{}')", table_name))
+        .map_err(|e| e.to_string())?;
+    
+    let indexes: Vec<Index> = idx_stmt
+        .query_map([], |row| {
+            let name: String = row.get(1)?;
+            let unique: i32 = row.get(2)?;
+            Ok((name, unique > 0))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .filter(|(name, _)| !name.starts_with("sqlite_"))
+        .map(|(name, unique)| {
+            let cols = get_index_columns(&conn, &name).unwrap_or_default();
+            Index {
+                name,
+                columns: cols,
+                unique,
+            }
+        })
+        .collect();
+    
+    Ok(indexes)
+}
+
 /// Get table schema
 #[tauri::command]
 pub fn get_table_schema(

@@ -1,0 +1,132 @@
+.constraint-editor {
+    margin-top: 1rem;
+    border: 1px solid var(--border-color, #3a3a3a);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.constraint-tabs {
+    display: flex;
+    background: var(--surface-secondary, #2a2a2a);
+    border-bottom: 1px solid var(--border-color, #3a3a3a);
+}
+
+.constraint-tabs .tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary, #9ca3af);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.constraint-tabs .tab:hover {
+    background: var(--surface-hover, #333);
+    color: var(--text-primary, #fff);
+}
+
+.constraint-tabs .tab.active {
+    background: var(--surface-primary, #1e1e1e);
+    color: var(--accent-color, #22d3ee);
+    border-bottom: 2px solid var(--accent-color, #22d3ee);
+}
+
+.constraint-content {
+    padding: 1rem;
+}
+
+.create-constraint-form {
+    background: var(--surface-secondary, #2a2a2a);
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+.create-constraint-form h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary, #fff);
+    font-weight: 500;
+}
+
+.create-constraint-form .form-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.create-constraint-form label {
+    min-width: 120px;
+    color: var(--text-secondary, #9ca3af);
+    font-size: 0.875rem;
+}
+
+.create-constraint-form input,
+.create-constraint-form select {
+    flex: 1;
+    padding: 0.5rem;
+    background: var(--surface-primary, #1e1e1e);
+    border: 1px solid var(--border-color, #3a3a3a);
+    border-radius: 4px;
+    color: var(--text-primary, #fff);
+    font-size: 0.875rem;
+}
+
+.create-constraint-form input:focus,
+.create-constraint-form select:focus {
+    outline: none;
+    border-color: var(--accent-color, #22d3ee);
+}
+
+.create-constraint-form .form-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #3a3a3a);
+}
+
+.btn-small {
+    padding: 0.5rem 0.75rem;
+    background: var(--accent-color, #22d3ee);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: opacity 0.2s ease;
+}
+
+.btn-small:hover {
+    opacity: 0.9;
+}
+
+.btn-primary {
+    padding: 0.5rem 1rem;
+    background: var(--accent-color, #22d3ee);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--text-secondary, #9ca3af);
+    border: 1px solid var(--border-color, #3a3a3a);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: var(--surface-secondary, #2a2a2a);
+}

@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "airdb"
-version = "0.2.1"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "axum 0.8.8",

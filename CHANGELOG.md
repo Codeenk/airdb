@@ -5,6 +5,41 @@ All notable changes to AirDB will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-02-09
+
+### 🎉 Productization Complete
+
+This release marks full productization layer completion for public beta.
+
+### ✨ Added
+
+#### Visual SQL Table Editor - Fully Integrated
+- **Tauri commands registered** - All schema editor commands now work:
+  - `get_tables` - List all user tables
+  - `get_table_schema` - Get column definitions
+  - `get_table_indexes` - Get index information
+  - `generate_table_migration` - Create migration from UI edits
+  - `apply_generated_migration` - Apply changes safely
+- **ConstraintEditor component** - Foreign keys and check constraints
+- **IndexManager integration** - Inline index management
+- **Full TableEditor** - Column, index, and constraint editing in one view
+
+#### Autostart Commands Registered
+- `get_autostart_status`, `enable_autostart`, `disable_autostart` now available
+
+### 📚 Documentation
+
+- **Revamped README** - Modern design with all 12 documentation links
+- **Complete doc structure** - Introduction, Installation, Quick Start, CLI Reference, SQL/NoSQL guides, Migrations, Updates, Team Workflows, Security, FAQ
+
+### 🔧 Changed
+
+- Version bump from 0.2.1 to 0.2.5
+- README now includes Visual SQL Editor feature highlight
+- Architecture diagram updated with new components
+
+---
+
 ## [0.2.1] - 2026-02-08
 
 ### 🎉 Productization Release

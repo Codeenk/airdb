@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { IndexManager } from './IndexManager';
+import { ConstraintEditor } from './ConstraintEditor';
 import './TableEditor.css';
 
 interface Column {
@@ -312,6 +314,39 @@ export function TableEditor() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Index Manager Integration */}
+                        {selectedTable && !isCreatingTable && (
+                            <IndexManager
+                                tableName={selectedTable}
+                                availableColumns={editedColumns.map(c => c.name).filter(n => n)}
+                                onMigrationGenerated={(upSql, downSql) => {
+                                    setMigrationPreview({
+                                        upSql,
+                                        downSql,
+                                        version: Date.now() % 1000000,
+                                        name: `index_${selectedTable}`,
+                                    });
+                                }}
+                            />
+                        )}
+
+                        {/* Constraint Editor Integration */}
+                        {selectedTable && !isCreatingTable && (
+                            <ConstraintEditor
+                                tableName={selectedTable}
+                                availableColumns={editedColumns.map(c => c.name).filter(n => n)}
+                                availableTables={tables.filter(t => t !== selectedTable)}
+                                onMigrationGenerated={(upSql, downSql) => {
+                                    setMigrationPreview({
+                                        upSql,
+                                        downSql,
+                                        version: Date.now() % 1000000,
+                                        name: `constraint_${selectedTable}`,
+                                    });
+                                }}
+                            />
+                        )}
 
                         <div className="actions-bar">
                             <button className="btn-secondary" onClick={cancelEdit}>
