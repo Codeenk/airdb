@@ -21,7 +21,7 @@ AirDB combines the simplicity of SQLite with the power of Git version control. I
 
 ---
 
-## 🚀 New in v0.2.5
+## 🚀 New in v0.2.6
 
 This release introduces major productivity features:
 
@@ -34,19 +34,36 @@ Built-in update management with safe rollbacks.
 - `airdb update apply` - Atomic updates
 - `airdb update rollback` - Instant revert to previous version
 
+### 🚀 Auto-Start on Boot
+Enable auto-start in Settings → General → "Start AirDB on system boot"
+
 ---
 
 ## 📥 Installation
 
-Download the latest release for your platform:
+### Linux / macOS
 
-| Platform | Installer | Portable |
-|----------|-----------|----------|
-| **Linux** | [`.deb`](https://github.com/Codeenk/airdb/releases/latest/download/airdb_0.2.5_amd64.deb) | [`.AppImage`](https://github.com/Codeenk/airdb/releases/latest/download/airdb_0.2.5_amd64.AppImage) |
-| **macOS** | [`.dmg`](https://github.com/Codeenk/airdb/releases/latest/download/AirDB_0.2.5_aarch64.dmg) | - |
-| **Windows** | [`.msi`](https://github.com/Codeenk/airdb/releases/latest/download/AirDB_0.2.5_x64_en-US.msi) | - |
+```bash
+# Download and extract
+curl -L https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.2.6-linux-x64.tar.gz | tar -xz
+cd airdb-*-linux-x64
+
+# Install (user mode) or use sudo for system-wide
+./install.sh
+
+# Verify
+airdb --version
+```
+
+### Windows
+
+1. Download [`airdb-0.2.6-windows-x64.zip`](https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.2.6-windows-x64.zip)
+2. Extract to a folder (e.g., `C:\Program Files\AirDB`)
+3. Add the `bin\` folder to your system PATH
+4. Run `airdb --version` to verify
 
 See [Installation Guide](docs/installation.md) for detailed instructions.
+
 
 ---
 

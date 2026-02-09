@@ -171,3 +171,69 @@ button:disabled {
     color: var(--text-muted, #888);
     font-size: 0.9rem;
 }
+
+/* Auto-start Toggle Switch */
+.autostart-row {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color, #3a3a4a);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary, #252538);
+    border: 1px solid var(--border-color, #3a3a4a);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted, #888);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    border-color: #4CAF50;
+}
+
+.toggle-switch input:checked+.toggle-slider:before {
+    background-color: white;
+    transform: translateX(24px);
+}
+
+.toggle-switch input:disabled+.toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle-label {
+    font-size: 0.875rem;
+    color: var(--text-muted, #888);
+    margin-left: 0.5rem;
+}

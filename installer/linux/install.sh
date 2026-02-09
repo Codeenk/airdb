@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 print_banner() {
     echo -e "${BLUE}"
     echo "╔══════════════════════════════════════════╗"
-    echo "║          AirDB Installer v0.2.5          ║"
+    echo "║          AirDB Installer v0.2.6          ║"
     echo "║   Local-First, GitHub-Backed Database    ║"
     echo "╚══════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -145,8 +145,8 @@ create_state_file() {
         print_info "Creating initial state file..."
         cat > "$INSTALL_DIR/state.json" << EOF
 {
-  "current_version": "0.2.5",
-  "last_good_version": "0.2.5",
+  "current_version": "0.2.6",
+  "last_good_version": "0.2.6",
   "pending_version": null,
   "update_channel": "stable",
   "last_check": null,

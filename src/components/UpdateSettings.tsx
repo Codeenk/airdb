@@ -19,7 +19,7 @@ interface UpdateState {
 
 export function UpdateSettings() {
     const [info, setInfo] = useState<UpdateInfo>({
-        currentVersion: '0.1.0',
+        currentVersion: '0.2.6',
         latestVersion: null,
         updateAvailable: false,
         channel: 'stable',
@@ -34,11 +34,39 @@ export function UpdateSettings() {
     });
 
     const [isLocked, setIsLocked] = useState(false);
+    const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+    const [autoStartLoading, setAutoStartLoading] = useState(false);
 
     useEffect(() => {
         loadUpdateInfo();
         checkLockStatus();
+        loadAutoStartStatus();
     }, []);
+
+    const loadAutoStartStatus = async () => {
+        try {
+            const status = await invoke<{ enabled: boolean; supported: boolean }>('get_autostart_status');
+            setAutoStartEnabled(status.enabled);
+        } catch (e) {
+            console.error('Failed to load autostart status:', e);
+        }
+    };
+
+    const toggleAutoStart = async () => {
+        setAutoStartLoading(true);
+        try {
+            if (autoStartEnabled) {
+                await invoke('disable_autostart');
+                setAutoStartEnabled(false);
+            } else {
+                await invoke('enable_autostart');
+                setAutoStartEnabled(true);
+            }
+        } catch (e) {
+            console.error('Failed to toggle autostart:', e);
+        }
+        setAutoStartLoading(false);
+    };
 
     const loadUpdateInfo = async () => {
         try {
@@ -150,6 +178,22 @@ export function UpdateSettings() {
                         <span className="value muted">{info.lastCheck}</span>
                     </div>
                 )}
+
+                <div className="version-row autostart-row">
+                    <span className="label">Start on Boot:</span>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={autoStartEnabled}
+                            onChange={toggleAutoStart}
+                            disabled={autoStartLoading}
+                        />
+                        <span className="toggle-slider"></span>
+                    </label>
+                    <span className="toggle-label">
+                        {autoStartEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                </div>
             </div>
 
             <div className="update-status">
