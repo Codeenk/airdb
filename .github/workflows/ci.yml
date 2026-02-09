@@ -40,17 +40,18 @@ jobs:
         working-directory: src-tauri
         run: cargo test --lib
 
-      - name: Build CLI
-        working-directory: src-tauri
-        run: cargo build --bin airdb-cli
+      - name: Prepare Sidecars
+        run: |
+          chmod +x src-tauri/scripts/prep-sidecars.sh
+          ./src-tauri/scripts/prep-sidecars.sh
 
       - name: Test CLI commands
         working-directory: src-tauri
         run: |
-          ./target/debug/airdb-cli --help
-          ./target/debug/airdb-cli migrate --help
-          ./target/debug/airdb-cli auth --help
-          ./target/debug/airdb-cli sync --help
+          ./target/release/airdb-cli --help
+          ./target/release/airdb-cli migrate --help
+          ./target/release/airdb-cli auth --help
+          ./target/release/airdb-cli sync --help
 
   build:
     needs: test
@@ -90,6 +91,11 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Prepare Sidecars
+        run: |
+          chmod +x src-tauri/scripts/prep-sidecars.sh
+          ./src-tauri/scripts/prep-sidecars.sh
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
