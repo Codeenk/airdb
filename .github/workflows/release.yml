@@ -8,20 +8,13 @@ on:
 permissions:
   contents: write
 
-jobs:
-  release:
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os: ubuntu-22.04
-            target: linux
-          - os: macos-latest
-            target: macos
-          - os: windows-latest
-            target: windows
+env:
+  VERSION: ${{ github.ref_name }}
 
-    runs-on: ${{ matrix.platform.os }}
+jobs:
+  # Build Linux distribution
+  build-linux:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +32,6 @@ jobs:
           workspaces: src-tauri
 
       - name: Install Linux dependencies
-        if: matrix.platform.target == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -50,63 +42,247 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Prepare Sidecars
-        shell: bash
+      - name: Build all binaries
         run: |
-          chmod +x src-tauri/scripts/prep-sidecars.sh
-          ./src-tauri/scripts/prep-sidecars.sh
+          cd src-tauri
+          cargo build --release --bin airdb-desktop
+          cargo build --release --bin airdb-cli
+          cargo build --release --bin airdb-bootstrap
 
-      - name: Build and Release
-        uses: tauri-apps/tauri-action@v0
+      - name: Create distribution package
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          DIST_NAME="airdb-${VERSION}-linux-x64"
+          
+          mkdir -p dist/$DIST_NAME/bin
+          
+          # Copy binaries
+          cp src-tauri/target/release/airdb-cli dist/$DIST_NAME/bin/airdb
+          cp src-tauri/target/release/airdb-desktop dist/$DIST_NAME/bin/airdb-desktop
+          cp src-tauri/target/release/airdb-bootstrap dist/$DIST_NAME/bin/airdb-bootstrap
+          
+          # Copy installer scripts
+          cp installer/linux/install.sh dist/$DIST_NAME/
+          cp installer/linux/uninstall.sh dist/$DIST_NAME/
+          cp installer/linux/airdb.desktop dist/$DIST_NAME/
+          cp installer/linux/README.txt dist/$DIST_NAME/
+          
+          # Make scripts executable
+          chmod +x dist/$DIST_NAME/install.sh
+          chmod +x dist/$DIST_NAME/uninstall.sh
+          chmod +x dist/$DIST_NAME/bin/*
+          
+          # Create tarball
+          cd dist
+          tar -czvf ${DIST_NAME}.tar.gz $DIST_NAME
+          
+          echo "Created dist/${DIST_NAME}.tar.gz"
+          ls -la
+
+      - name: Upload Linux distribution
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/airdb-*-linux-x64.tar.gz
+          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'AirDB ${{ github.ref_name }}'
-          releaseBody: |
-            ## AirDB ${{ github.ref_name }}
-            
-            Download the installer for your platform below.
-            
-            ### Installation
-            - **Linux**: Download `.AppImage` or `.deb`
-            - **macOS**: Download `.dmg`
-            - **Windows**: Download `.msi` or `.exe`
-            
-            ### Self-Update
-            AirDB includes automatic update checking. You can also run:
-            ```bash
-            airdb update check
-            ```
-          releaseDraft: false
-          prerelease: false
 
-  # Generate update manifest after all builds complete
-  manifest:
-    needs: release
+  # Build Windows distribution
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build all binaries
+        run: |
+          cd src-tauri
+          cargo build --release --bin airdb-desktop
+          cargo build --release --bin airdb-cli
+          cargo build --release --bin airdb-bootstrap
+
+      - name: Create distribution package
+        shell: pwsh
+        run: |
+          $VERSION = "${{ github.ref_name }}".TrimStart('v')
+          $DIST_NAME = "airdb-${VERSION}-windows-x64"
+          
+          New-Item -ItemType Directory -Force -Path "dist/$DIST_NAME/bin"
+          
+          # Copy binaries
+          Copy-Item "src-tauri/target/release/airdb-cli.exe" "dist/$DIST_NAME/bin/airdb.exe"
+          Copy-Item "src-tauri/target/release/airdb-desktop.exe" "dist/$DIST_NAME/bin/airdb-desktop.exe"
+          Copy-Item "src-tauri/target/release/airdb-bootstrap.exe" "dist/$DIST_NAME/bin/airdb-bootstrap.exe"
+          
+          # Create zip
+          Compress-Archive -Path "dist/$DIST_NAME" -DestinationPath "dist/${DIST_NAME}.zip"
+          
+          Write-Host "Created dist/${DIST_NAME}.zip"
+          Get-ChildItem dist
+
+      - name: Upload Windows distribution
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/airdb-*-windows-x64.zip
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build macOS distribution
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build all binaries
+        run: |
+          cd src-tauri
+          cargo build --release --bin airdb-desktop
+          cargo build --release --bin airdb-cli
+          cargo build --release --bin airdb-bootstrap
+
+      - name: Create distribution package
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          DIST_NAME="airdb-${VERSION}-macos-x64"
+          
+          mkdir -p dist/$DIST_NAME/bin
+          
+          # Copy binaries
+          cp src-tauri/target/release/airdb-cli dist/$DIST_NAME/bin/airdb
+          cp src-tauri/target/release/airdb-desktop dist/$DIST_NAME/bin/airdb-desktop
+          cp src-tauri/target/release/airdb-bootstrap dist/$DIST_NAME/bin/airdb-bootstrap
+          
+          # Copy installer scripts (reuse Linux scripts for macOS)
+          cp installer/linux/install.sh dist/$DIST_NAME/
+          cp installer/linux/uninstall.sh dist/$DIST_NAME/
+          cp installer/linux/README.txt dist/$DIST_NAME/
+          
+          # Make scripts executable
+          chmod +x dist/$DIST_NAME/install.sh
+          chmod +x dist/$DIST_NAME/uninstall.sh
+          chmod +x dist/$DIST_NAME/bin/*
+          
+          # Create tarball
+          cd dist
+          tar -czvf ${DIST_NAME}.tar.gz $DIST_NAME
+          
+          echo "Created dist/${DIST_NAME}.tar.gz"
+
+      - name: Upload macOS distribution
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/airdb-*-macos-x64.tar.gz
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Generate source archive and manifest
+  finalize:
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create source archive
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          
+          # Create source tarball
+          git archive --format=tar.gz --prefix=airdb-${VERSION}/ HEAD > airdb-${VERSION}-source.tar.gz
+          
+          echo "Created airdb-${VERSION}-source.tar.gz"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Generate Update Manifest
+      - name: Generate update manifest
         run: |
           VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          VERSION="${VERSION#v}"
           
           python scripts/generate_manifest.py \
             --version "$VERSION" \
             --channel stable \
             --changelog "Release ${{ github.ref_name }}"
 
-      - name: Upload Manifest to Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload source and manifest
+        uses: softprops/action-gh-release@v2
         with:
-          files: update-manifest.json
+          files: |
+            airdb-*-source.tar.gz
+            update-manifest.json
           tag_name: ${{ github.ref_name }}
+          body: |
+            ## AirDB ${{ github.ref_name }}
+            
+            Download the installer for your platform below.
+            
+            ### Installation
+            
+            #### Linux
+            ```bash
+            tar -xzf airdb-*-linux-x64.tar.gz
+            cd airdb-*-linux-x64
+            ./install.sh
+            ```
+            
+            #### macOS
+            ```bash
+            tar -xzf airdb-*-macos-x64.tar.gz
+            cd airdb-*-macos-x64
+            ./install.sh
+            ```
+            
+            #### Windows
+            Extract the zip and run the binaries from `bin/` folder.
+            Add the `bin/` folder to your PATH for CLI access.
+            
+            ### Verify Installation
+            ```bash
+            airdb --version
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

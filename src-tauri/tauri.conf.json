@@ -38,10 +38,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "bin/airdb-cli",
-      "bin/airdb-bootstrap"
-    ],
     "linux": {
       "appimage": {
         "bundleMediaFramework": false

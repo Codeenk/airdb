@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=AirDB
+Comment=Local-First, GitHub-Backed Database Platform
+Exec=airdb-desktop
+Icon=database
+Terminal=false
+Type=Application
+Categories=Development;Database;
+Keywords=database;sql;nosql;git;GitHub;
+StartupWMClass=airdb
