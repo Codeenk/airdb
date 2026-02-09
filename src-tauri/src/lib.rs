@@ -411,6 +411,23 @@ pub fn run() {
         .manage(NoSqlState {
             project_dir: Mutex::new(None),
         })
+        .setup(|app| {
+            // Install CLI tools to PATH on startup
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            {
+                use engine::installer::Installer;
+                let installer = Installer::new("AirDB");
+                
+                // On packaged builds, sidecars are in the same directory as the executable (or handled by Tauri)
+                // We pass the parent directory of the current executable as the source
+                if let Ok(current_exe) = std::env::current_exe() {
+                    if let Some(parent) = current_exe.parent() {
+                        let _ = installer.install_to_path(parent);
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_status,
             init_project,

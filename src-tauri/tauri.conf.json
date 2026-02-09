@@ -38,6 +38,10 @@
         "bundleMediaFramework": false
       }
     },
+    "externalBin": [
+      "airdb-cli",
+      "airdb-bootstrap"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"
