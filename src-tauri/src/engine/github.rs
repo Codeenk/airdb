@@ -86,6 +86,7 @@ pub struct DeviceCodeResponse {
 }
 
 /// Token response from GitHub
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
     access_token: Option<String>,

@@ -111,6 +111,7 @@ impl VersionMatrix {
 }
 
 /// Compatibility tester
+#[allow(dead_code)]
 pub struct CompatibilityTester {
     current_version: String,
     min_supported_version: String,

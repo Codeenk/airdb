@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Installer {
     app_name: String,

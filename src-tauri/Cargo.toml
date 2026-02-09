@@ -78,6 +78,11 @@ hex = "0.4"
 # Async utilities
 futures-util = "0.3"
 
+# Archive extraction (for update downloads)
+tar = "0.4"
+flate2 = "1"
+zip = "2"
+
 # OpenAPI generation
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8", features = ["axum"] }

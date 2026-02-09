@@ -955,55 +955,99 @@ async fn cmd_sync(action: SyncAction, project_dir: &PathBuf, json: bool) -> Resu
     Ok(())
 }
 
-/// Update check result
+/// Update check result with release info
+#[allow(dead_code)]
 struct UpdateInfo {
     available: bool,
     latest_version: String,
+    download_url: Option<String>,
+    asset_name: Option<String>,
+}
+
+/// GitHub release asset info
+#[derive(Debug)]
+struct ReleaseAsset {
+    name: String,
+    download_url: String,
+    size: u64,
+}
+
+/// Fetch release info from GitHub API
+fn fetch_github_release(version: Option<&str>) -> Option<(String, Vec<ReleaseAsset>)> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("airdb-cli")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .ok()?;
+    
+    let url = match version {
+        Some(v) => format!("https://api.github.com/repos/Codeenk/airdb/releases/tags/v{}", v),
+        None => "https://api.github.com/repos/Codeenk/airdb/releases/latest".to_string(),
+    };
+    
+    let response = client
+        .get(&url)
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .ok()?;
+    
+    if !response.status().is_success() {
+        return None;
+    }
+    
+    let json: serde_json::Value = response.json().ok()?;
+    let tag_name = json.get("tag_name")?.as_str()?;
+    let version = tag_name.strip_prefix('v').unwrap_or(tag_name).to_string();
+    
+    let assets = json.get("assets")?.as_array()?;
+    let mut release_assets = Vec::new();
+    
+    for asset in assets {
+        let name = asset.get("name")?.as_str()?.to_string();
+        let download_url = asset.get("browser_download_url")?.as_str()?.to_string();
+        let size = asset.get("size")?.as_u64().unwrap_or(0);
+        release_assets.push(ReleaseAsset { name, download_url, size });
+    }
+    
+    Some((version, release_assets))
+}
+
+/// Get platform-specific asset name pattern
+fn get_platform_asset_pattern() -> &'static str {
+    #[cfg(target_os = "linux")]
+    { "linux" }
+    #[cfg(target_os = "windows")]
+    { "windows" }
+    #[cfg(target_os = "macos")]
+    { "macos" }
 }
 
 /// Check GitHub releases API for available updates
 fn check_github_releases(current_version: &str) -> UpdateInfo {
-    // Try to fetch latest release from GitHub API
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("airdb-cli")
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
-    
-    let client = match client {
-        Ok(c) => c,
-        Err(_) => return UpdateInfo {
-            available: false,
-            latest_version: current_version.to_string(),
-        },
-    };
-    
-    let response = client
-        .get("https://api.github.com/repos/Codeenk/airdb/releases/latest")
-        .header("Accept", "application/vnd.github.v3+json")
-        .send();
-    
-    match response {
-        Ok(resp) if resp.status().is_success() => {
-            if let Ok(json) = resp.json::<serde_json::Value>() {
-                if let Some(tag_name) = json.get("tag_name").and_then(|v| v.as_str()) {
-                    // Remove 'v' prefix if present
-                    let latest = tag_name.strip_prefix('v').unwrap_or(tag_name);
-                    let available = compare_versions(current_version, latest) < 0;
-                    
-                    return UpdateInfo {
-                        available,
-                        latest_version: latest.to_string(),
-                    };
-                }
+    match fetch_github_release(None) {
+        Some((latest, assets)) => {
+            let available = compare_versions(current_version, &latest) < 0;
+            let pattern = get_platform_asset_pattern();
+            
+            // Find matching asset for this platform
+            let matching_asset = assets.iter().find(|a| 
+                a.name.to_lowercase().contains(pattern) && 
+                (a.name.ends_with(".tar.gz") || a.name.ends_with(".zip"))
+            );
+            
+            UpdateInfo {
+                available,
+                latest_version: latest,
+                download_url: matching_asset.map(|a| a.download_url.clone()),
+                asset_name: matching_asset.map(|a| a.name.clone()),
             }
         }
-        _ => {}
-    }
-    
-    // Fallback if API call fails
-    UpdateInfo {
-        available: false,
-        latest_version: current_version.to_string(),
+        None => UpdateInfo {
+            available: false,
+            latest_version: current_version.to_string(),
+            download_url: None,
+            asset_name: None,
+        },
     }
 }
 
@@ -1072,17 +1116,165 @@ fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error
         }
 
         UpdateAction::Download { version } => {
-            let target_version = version.unwrap_or_else(|| "latest".to_string());
+            let target_version = version.as_deref();
+            
+            // Fetch release info
+            if !json { println!("🔍 Fetching release information..."); }
+            
+            let release_info = match fetch_github_release(target_version) {
+                Some(info) => info,
+                None => {
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "error",
+                            "message": "Failed to fetch release information"
+                        }));
+                    } else {
+                        println!("❌ Failed to fetch release information from GitHub");
+                    }
+                    return Ok(());
+                }
+            };
+            
+            let (release_version, assets) = release_info;
+            let pattern = get_platform_asset_pattern();
+            
+            // Find matching asset for this platform
+            let asset = match assets.iter().find(|a| 
+                a.name.to_lowercase().contains(pattern) && 
+                (a.name.ends_with(".tar.gz") || a.name.ends_with(".zip"))
+            ) {
+                Some(a) => a,
+                None => {
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "error",
+                            "version": release_version,
+                            "message": format!("No {} binary found in release", pattern)
+                        }));
+                    } else {
+                        println!("❌ No {} binary found in v{} release", pattern, release_version);
+                        println!("   Available assets:");
+                        for a in &assets {
+                            println!("     - {}", a.name);
+                        }
+                    }
+                    return Ok(());
+                }
+            };
+            
+            // Check if already installed
+            if version_manager.is_version_installed(&release_version) {
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "already_installed",
+                        "version": release_version
+                    }));
+                } else {
+                    println!("✅ Version {} is already installed", release_version);
+                    println!("   Run `airdb update apply` to switch to it");
+                }
+                // Mark as pending if not current
+                if state.current_version != release_version {
+                    state.pending_version = Some(release_version);
+                    state.save(&state_path).ok();
+                }
+                return Ok(());
+            }
+            
+            if !json {
+                println!("📥 Downloading v{}...", release_version);
+                println!("   Asset: {}", asset.name);
+                println!("   Size: {:.2} MB", asset.size as f64 / 1_048_576.0);
+            }
+            
+            // Download to temp directory
+            let temp_dir = version_manager.temp_version_path(&release_version);
+            std::fs::create_dir_all(&temp_dir)?;
+            let download_path = temp_dir.join(&asset.name);
+            
+            // Download with progress
+            let client = reqwest::blocking::Client::builder()
+                .user_agent("airdb-cli")
+                .timeout(std::time::Duration::from_secs(600))
+                .build()?;
+            
+            let mut response = client.get(&asset.download_url).send()?;
+            
+            if !response.status().is_success() {
+                if json {
+                    println!("{}", serde_json::json!({
+                        "status": "error",
+                        "message": format!("Download failed: HTTP {}", response.status())
+                    }));
+                } else {
+                    println!("❌ Download failed: HTTP {}", response.status());
+                }
+                return Ok(());
+            }
+            
+            let total_size = response.content_length().unwrap_or(asset.size);
+            let mut downloaded: u64 = 0;
+            let mut file = std::fs::File::create(&download_path)?;
+            let mut buffer = [0u8; 8192];
+            let mut last_progress = 0;
+            
+            use std::io::Read;
+            loop {
+                let bytes_read = response.read(&mut buffer)?;
+                if bytes_read == 0 { break; }
+                
+                use std::io::Write;
+                file.write_all(&buffer[..bytes_read])?;
+                downloaded += bytes_read as u64;
+                
+                // Show progress every 10%
+                let progress = (downloaded * 100 / total_size.max(1)) as u32;
+                if !json && progress >= last_progress + 10 {
+                    println!("   Progress: {}%", progress);
+                    last_progress = progress;
+                }
+            }
+            
+            if !json { println!("   ✅ Download complete"); }
+            
+            // Extract archive
+            if !json { println!("📦 Extracting..."); }
+            
+            if asset.name.ends_with(".tar.gz") {
+                // Extract tar.gz
+                let tar_gz = std::fs::File::open(&download_path)?;
+                let tar = flate2::read::GzDecoder::new(tar_gz);
+                let mut archive = tar::Archive::new(tar);
+                archive.unpack(&temp_dir)?;
+            } else if asset.name.ends_with(".zip") {
+                // Extract zip
+                let file = std::fs::File::open(&download_path)?;
+                let mut archive = zip::ZipArchive::new(file)?;
+                archive.extract(&temp_dir)?;
+            }
+            
+            // Clean up downloaded archive
+            std::fs::remove_file(&download_path).ok();
+            
+            // Move from temp to final location
+            version_manager.install_version(&release_version)?;
+            
+            // Update state
+            state.pending_version = Some(release_version.clone());
+            state.update_status = airdb_lib::engine::updater::UpdateStatus::ReadyToSwitch;
+            state.save(&state_path)?;
             
             if json {
                 println!("{}", serde_json::json!({
-                    "status": "not_available",
-                    "target_version": target_version,
-                    "message": "Self-update downloads not yet implemented"
+                    "status": "downloaded",
+                    "version": release_version,
+                    "message": "Run `airdb update apply` to switch to this version"
                 }));
             } else {
-                println!("📥 Download functionality will be available in a future release");
-                println!("   Target: {}", target_version);
+                println!("✅ Version {} downloaded and ready", release_version);
+                println!("");
+                println!("   Run `airdb update apply` to switch to this version");
             }
         }
 
@@ -1094,26 +1286,73 @@ fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error
                         "message": "No update pending"
                     }));
                 } else {
-                    println!("ℹ️  No update pending. Run `airdb update check` first.");
+                    println!("ℹ️  No update pending.");
+                    println!("   Run `airdb update download` to download an update first.");
                 }
-            } else {
-                let pending = state.pending_version.as_ref().unwrap();
+                return Ok(());
+            }
+            
+            let pending = state.pending_version.as_ref().unwrap().clone();
+            
+            // Check if the version is actually installed
+            if !version_manager.is_version_installed(&pending) {
                 if json {
                     println!("{}", serde_json::json!({
-                        "status": "ready",
-                        "pending_version": pending,
-                        "message": "Restart required to apply update"
+                        "status": "error",
+                        "version": pending,
+                        "message": "Version not installed"
                     }));
                 } else {
-                    println!("🔄 Update v{} is pending", pending);
-                    println!("   Restart AirDB to apply the update");
+                    println!("❌ Version {} is not installed", pending);
+                    println!("   Run `airdb update download {}` first", pending);
+                }
+                return Ok(());
+            }
+            
+            if !json {
+                println!("🔄 Applying update to v{}...", pending);
+            }
+            
+            // Switch the version
+            match version_manager.switch_version(&pending) {
+                Ok(()) => {
+                    // Update state
+                    state.last_good_version = state.current_version.clone();
+                    state.current_version = pending.clone();
+                    state.pending_version = None;
+                    state.update_status = airdb_lib::engine::updater::UpdateStatus::Idle;
+                    state.failed_boot_count = 0;
+                    state.save(&state_path)?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "applied",
+                            "version": pending,
+                            "message": "Update applied successfully"
+                        }));
+                    } else {
+                        println!("✅ Successfully switched to v{}", pending);
+                        println!("");
+                        println!("   The new version will be used on next launch.");
+                        println!("   If issues occur, run `airdb update rollback`");
+                    }
+                }
+                Err(e) => {
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "error",
+                            "message": e.to_string()
+                        }));
+                    } else {
+                        println!("❌ Failed to apply update: {}", e);
+                    }
                 }
             }
         }
 
         UpdateAction::Rollback => {
-            let last_good = &state.last_good_version;
-            let current = &state.current_version;
+            let last_good = state.last_good_version.clone();
+            let current = state.current_version.clone();
             
             if last_good == current {
                 if json {
@@ -1123,24 +1362,65 @@ fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error
                     }));
                 } else {
                     println!("ℹ️  No previous version to rollback to");
+                    println!("   You are on the oldest tracked version: v{}", current);
                 }
-            } else {
-                // Mark for rollback
-                state.pending_version = Some(last_good.clone());
-                state.save(&state_path).ok();
-                
+                return Ok(());
+            }
+            
+            // Check if last_good version is installed
+            if !version_manager.is_version_installed(&last_good) {
                 if json {
                     println!("{}", serde_json::json!({
-                        "status": "pending_rollback",
-                        "current": current,
-                        "target": last_good,
-                        "message": "Restart to complete rollback"
+                        "status": "error",
+                        "version": last_good,
+                        "message": "Previous version not installed"
                     }));
                 } else {
-                    println!("⏪ Rollback prepared");
-                    println!("   Current: v{}", current);
-                    println!("   Rolling back to: v{}", last_good);
-                    println!("   Restart AirDB to complete rollback");
+                    println!("❌ Previous version {} is not installed", last_good);
+                    println!("   Cannot rollback - version files not found");
+                }
+                return Ok(());
+            }
+            
+            if !json {
+                println!("⏪ Rolling back from v{} to v{}...", current, last_good);
+            }
+            
+            // Switch to the previous version
+            match version_manager.switch_version(&last_good) {
+                Ok(()) => {
+                    // Update state - swap current and last_good
+                    state.current_version = last_good.clone();
+                    state.last_good_version = current.clone();
+                    state.pending_version = None;
+                    state.update_status = airdb_lib::engine::updater::UpdateStatus::RolledBack {
+                        reason: "User requested rollback".to_string()
+                    };
+                    state.failed_boot_count = 0;
+                    state.save(&state_path)?;
+                    
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "rolled_back",
+                            "from": current,
+                            "to": last_good,
+                            "message": "Rollback completed"
+                        }));
+                    } else {
+                        println!("✅ Successfully rolled back to v{}", last_good);
+                        println!("");
+                        println!("   The previous version will be used on next launch.");
+                    }
+                }
+                Err(e) => {
+                    if json {
+                        println!("{}", serde_json::json!({
+                            "status": "error",
+                            "message": e.to_string()
+                        }));
+                    } else {
+                        println!("❌ Failed to rollback: {}", e);
+                    }
                 }
             }
         }
