@@ -51,6 +51,7 @@ jobs:
         run: npm run build
 
       - name: Prepare Sidecars
+        shell: bash
         run: |
           chmod +x src-tauri/scripts/prep-sidecars.sh
           ./src-tauri/scripts/prep-sidecars.sh
