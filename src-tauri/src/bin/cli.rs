@@ -955,6 +955,80 @@ async fn cmd_sync(action: SyncAction, project_dir: &PathBuf, json: bool) -> Resu
     Ok(())
 }
 
+/// Update check result
+struct UpdateInfo {
+    available: bool,
+    latest_version: String,
+}
+
+/// Check GitHub releases API for available updates
+fn check_github_releases(current_version: &str) -> UpdateInfo {
+    // Try to fetch latest release from GitHub API
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("airdb-cli")
+        .timeout(std::time::Duration::from_secs(10))
+        .build();
+    
+    let client = match client {
+        Ok(c) => c,
+        Err(_) => return UpdateInfo {
+            available: false,
+            latest_version: current_version.to_string(),
+        },
+    };
+    
+    let response = client
+        .get("https://api.github.com/repos/Codeenk/airdb/releases/latest")
+        .header("Accept", "application/vnd.github.v3+json")
+        .send();
+    
+    match response {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(json) = resp.json::<serde_json::Value>() {
+                if let Some(tag_name) = json.get("tag_name").and_then(|v| v.as_str()) {
+                    // Remove 'v' prefix if present
+                    let latest = tag_name.strip_prefix('v').unwrap_or(tag_name);
+                    let available = compare_versions(current_version, latest) < 0;
+                    
+                    return UpdateInfo {
+                        available,
+                        latest_version: latest.to_string(),
+                    };
+                }
+            }
+        }
+        _ => {}
+    }
+    
+    // Fallback if API call fails
+    UpdateInfo {
+        available: false,
+        latest_version: current_version.to_string(),
+    }
+}
+
+/// Compare semantic versions: returns -1 if a < b, 0 if equal, 1 if a > b
+fn compare_versions(a: &str, b: &str) -> i32 {
+    let parse = |v: &str| -> Vec<u32> {
+        v.split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect()
+    };
+    
+    let va = parse(a);
+    let vb = parse(b);
+    
+    for i in 0..va.len().max(vb.len()) {
+        let pa = va.get(i).copied().unwrap_or(0);
+        let pb = vb.get(i).copied().unwrap_or(0);
+        
+        if pa < pb { return -1; }
+        if pa > pb { return 1; }
+    }
+    
+    0
+}
+
 /// Handle update commands
 fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error::Error>> {
     use airdb_lib::engine::updater::{VersionManager, UpdateState};
@@ -967,19 +1041,33 @@ fn cmd_update(action: UpdateAction, json: bool) -> Result<(), Box<dyn std::error
 
     match action {
         UpdateAction::Check => {
-            // In production, this would check GitHub releases
             let current = &state.current_version;
+            
+            // Check GitHub releases for updates
+            let update_info = check_github_releases(current);
             
             if json {
                 println!("{}", serde_json::json!({
                     "current_version": current,
-                    "update_available": false,
-                    "message": "No updates available"
+                    "update_available": update_info.available,
+                    "latest_version": update_info.latest_version,
+                    "message": if update_info.available {
+                        format!("Update v{} available", update_info.latest_version)
+                    } else {
+                        "No updates available".to_string()
+                    }
                 }));
             } else {
                 println!("🔍 Checking for updates...");
                 println!("   Current version: v{}", current);
-                println!("   ✅ You are running the latest version");
+                if update_info.available {
+                    println!("   🆕 Update available: v{}", update_info.latest_version);
+                    println!("");
+                    println!("   To download: airdb update download");
+                    println!("   Or download from: https://github.com/Codeenk/airdb/releases/tag/v{}", update_info.latest_version);
+                } else {
+                    println!("   ✅ You are running the latest version");
+                }
             }
         }
 

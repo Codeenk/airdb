@@ -55,7 +55,7 @@ git2 = "0.19"
 
 # OAuth2 / HTTP client
 oauth2 = "4"
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
 
 # Secret storage
 keyring = "3"
