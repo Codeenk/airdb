@@ -6,15 +6,21 @@ pub mod commands;
 
 use engine::config::Config;
 use engine::database::Database;
+use engine::adapter::DatabaseAdapter;
+use engine::adapter::sqlite::SqliteAdapter;
 use engine::migrations::MigrationRunner;
 use engine::keystore::Keystore;
+use engine::api::{ApiState, create_router};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 pub struct AppState {
     pub project_dir: Mutex<Option<PathBuf>>,
     pub db: Mutex<Option<Database>>,
+    pub adapter: Mutex<Option<Box<dyn DatabaseAdapter>>>,
+    pub api_server_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    pub api_server_port: Mutex<Option<u16>>,
 }
 
 impl Default for AppState {
@@ -22,6 +28,9 @@ impl Default for AppState {
         Self {
             project_dir: Mutex::new(None),
             db: Mutex::new(None),
+            adapter: Mutex::new(None),
+            api_server_handle: Mutex::new(None),
+            api_server_port: Mutex::new(None),
         }
     }
 }
@@ -74,12 +83,17 @@ fn open_project(path: String, state: State<AppState>) -> Result<serde_json::Valu
     let db_path = project_dir.join(&config.database.path);
     let db = Database::new(&db_path).map_err(|e| e.to_string())?;
     
+    // Create the adapter alongside the legacy Database handle
+    let adapter = SqliteAdapter::new(&db_path).map_err(|e| e.to_string())?;
+    
     *state.project_dir.lock().unwrap() = Some(project_dir);
     *state.db.lock().unwrap() = Some(db);
+    *state.adapter.lock().unwrap() = Some(Box::new(adapter));
     
     Ok(serde_json::json!({
         "success": true,
         "project_name": config.project.name,
+        "dialect": "sqlite",
     }))
 }
 
@@ -121,6 +135,122 @@ fn get_migration_status(state: State<AppState>) -> Result<serde_json::Value, Str
         "applied_count": status.applied_count,
         "pending_count": status.pending_count,
         "pending": status.pending_migrations,
+    }))
+}
+
+#[tauri::command]
+fn list_all_migrations(state: State<AppState>) -> Result<serde_json::Value, String> {
+    let project_dir = state.project_dir.lock().unwrap();
+    let project_dir = project_dir.as_ref().ok_or("No project open")?;
+    
+    let db = state.db.lock().unwrap();
+    let db = db.as_ref().ok_or("Database not initialized")?;
+    
+    let runner = MigrationRunner::new(project_dir);
+    let pending = runner.list_pending(db).map_err(|e| e.to_string())?;
+    let applied_names = db.get_applied_migrations().map_err(|e| e.to_string())?;
+    
+    // Read applied migrations' SQL from disk too
+    let migrations_dir = project_dir.join("sql").join("migrations");
+    let mut all_migrations = Vec::new();
+    
+    for name in &applied_names {
+        let path = migrations_dir.join(name);
+        let sql = std::fs::read_to_string(&path).unwrap_or_default();
+        all_migrations.push(serde_json::json!({
+            "name": name,
+            "sql": sql,
+            "status": "applied",
+        }));
+    }
+    
+    for m in &pending {
+        all_migrations.push(serde_json::json!({
+            "name": m.name,
+            "sql": m.sql,
+            "status": "pending",
+            "checksum": m.checksum,
+        }));
+    }
+    
+    Ok(serde_json::json!({
+        "migrations": all_migrations,
+        "applied_count": applied_names.len(),
+        "pending_count": pending.len(),
+    }))
+}
+
+#[tauri::command]
+fn generate_snapshot(state: State<AppState>) -> Result<String, String> {
+    let project_dir = state.project_dir.lock().unwrap();
+    let project_dir = project_dir.as_ref().ok_or("No project open")?;
+    
+    let db = state.db.lock().unwrap();
+    let db = db.as_ref().ok_or("Database not initialized")?;
+    
+    let runner = MigrationRunner::new(project_dir);
+    let path = runner.generate_schema_snapshot(db, project_dir).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn start_api_server(port: u16, state: State<'_, AppState>) -> Result<String, String> {
+    // Check if already running
+    {
+        let handle = state.api_server_handle.lock().unwrap();
+        if handle.is_some() {
+            return Err("API server is already running".into());
+        }
+    }
+
+    // Clone database for use in async context
+    let db = {
+        let db_guard = state.db.lock().unwrap();
+        db_guard.as_ref().ok_or("Database not initialized")?.clone()
+    };
+
+    let api_state = ApiState { db: Arc::new(db) };
+    let app = create_router(api_state);
+    let addr = format!("127.0.0.1:{}", port);
+
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .map_err(|e| format!("Failed to bind to port {}: {}", port, e))?;
+
+    let handle = tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, app).await {
+            eprintln!("API server error: {}", e);
+        }
+    });
+
+    *state.api_server_handle.lock().unwrap() = Some(handle);
+    *state.api_server_port.lock().unwrap() = Some(port);
+
+    Ok(format!("API server running on http://127.0.0.1:{}", port))
+}
+
+#[tauri::command]
+fn stop_api_server(state: State<AppState>) -> Result<String, String> {
+    let mut handle = state.api_server_handle.lock().unwrap();
+    match handle.take() {
+        Some(h) => {
+            h.abort();
+            *state.api_server_port.lock().unwrap() = None;
+            Ok("API server stopped".into())
+        }
+        None => Err("API server is not running".into()),
+    }
+}
+
+#[tauri::command]
+fn get_api_server_status(state: State<AppState>) -> Result<serde_json::Value, String> {
+    let handle = state.api_server_handle.lock().unwrap();
+    let port = state.api_server_port.lock().unwrap();
+    let running = handle.is_some() && !handle.as_ref().unwrap().is_finished();
+
+    Ok(serde_json::json!({
+        "running": running,
+        "port": *port,
     }))
 }
 
@@ -422,6 +552,11 @@ pub fn run() {
             create_migration,
             run_migrations,
             get_migration_status,
+            list_all_migrations,
+            generate_snapshot,
+            start_api_server,
+            stop_api_server,
+            get_api_server_status,
             list_api_keys,
             create_api_key,
             revoke_api_key,
@@ -456,10 +591,40 @@ pub fn run() {
             commands::get_table_indexes,
             commands::generate_table_migration,
             commands::apply_generated_migration,
+            commands::execute_raw_sql,
+            commands::get_project_type,
+            commands::set_project_type,
+            // Lock commands
+            commands::is_update_blocked,
+            commands::get_active_locks,
+            commands::check_lock,
             // Autostart commands
             commands::get_autostart_status,
             commands::enable_autostart,
             commands::disable_autostart,
+            // Data browser commands
+            commands::query_table_data,
+            commands::adapter_insert_row,
+            commands::adapter_update_row,
+            commands::adapter_delete_row,
+            commands::adapter_get_table_schema,
+            commands::get_dialect,
+            commands::get_dialect_types,
+            commands::get_database_size,
+            commands::get_table_row_count,
+            commands::get_schema_graph,
+            // Connection commands
+            commands::list_connections,
+            commands::add_connection,
+            commands::update_connection,
+            commands::remove_connection,
+            commands::test_connection,
+            commands::connect_to_database,
+            // Audit & Health commands
+            commands::get_audit_log,
+            commands::get_audit_count,
+            commands::append_audit_entry,
+            commands::get_health_dashboard,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

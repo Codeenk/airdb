@@ -1,6 +1,6 @@
 [package]
 name = "airdb"
-version = "0.2.6"
+version = "0.8.0"
 description = "AirDB - Local-first, GitHub-backed database platform"
 authors = ["AirDB Team"]
 edition = "2021"

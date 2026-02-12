@@ -56,6 +56,20 @@ pub fn create_router(state: ApiState) -> Router {
         .with_state(state)
 }
 
+/// Validate a table or column name to prevent SQL injection.
+/// Only allows alphanumeric characters and underscores.
+fn validate_identifier(name: &str) -> Result<&str, StatusCode> {
+    if name.is_empty() || name.len() > 128 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    if name.chars().all(|c| c.is_alphanumeric() || c == '_') 
+        && !name.chars().next().unwrap().is_ascii_digit() {
+        Ok(name)
+    } else {
+        Err(StatusCode::BAD_REQUEST)
+    }
+}
+
 #[derive(Serialize)]
 pub struct HealthResponse {
     pub status: String,
@@ -113,18 +127,19 @@ async fn get_table_rows(
     Path(table): Path<String>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<Value>, StatusCode> {
+    let table = validate_identifier(&table)?;
     let conn = state.db.get_connection().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     let query = format!(
-        "SELECT * FROM {} LIMIT {} OFFSET {}",
-        table, params.limit, params.offset
+        "SELECT * FROM \"{}\" LIMIT ?1 OFFSET ?2",
+        table
     );
 
     let mut stmt = conn.prepare(&query).map_err(|_| StatusCode::BAD_REQUEST)?;
     let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
     
     let rows: Vec<Value> = stmt
-        .query_map([], |row| {
+        .query_map(rusqlite::params![params.limit as i64, params.offset as i64], |row| {
             let mut obj = serde_json::Map::new();
             for (i, col_name) in column_names.iter().enumerate() {
                 let value: Value = match row.get_ref(i) {
@@ -172,15 +187,20 @@ async fn insert_row(
     Path(table): Path<String>,
     Json(body): Json<Value>,
 ) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    let table = validate_identifier(&table)?;
     let obj = body.as_object().ok_or(StatusCode::BAD_REQUEST)?;
     
-    let columns: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
+    // Validate all column names
+    let columns: Vec<&str> = obj.keys()
+        .map(|s| validate_identifier(s.as_str()))
+        .collect::<Result<Vec<_>, _>>()?;
     let placeholders: Vec<String> = (1..=columns.len()).map(|i| format!("?{}", i)).collect();
     
+    let col_names: Vec<String> = columns.iter().map(|c| format!("\"{}\"", c)).collect();
     let query = format!(
-        "INSERT INTO {} ({}) VALUES ({})",
+        "INSERT INTO \"{}\" ({}) VALUES ({})",
         table,
-        columns.join(", "),
+        col_names.join(", "),
         placeholders.join(", ")
     );
 
@@ -224,16 +244,19 @@ async fn update_row(
     Path((table, id)): Path<(String, i64)>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    let table = validate_identifier(&table)?;
     let obj = body.as_object().ok_or(StatusCode::BAD_REQUEST)?;
     
     let set_clauses: Vec<String> = obj
         .keys()
         .enumerate()
-        .map(|(i, k)| format!("{} = ?{}", k, i + 1))
-        .collect();
+        .map(|(i, k)| {
+            validate_identifier(k.as_str()).map(|validated| format!("\"{}\" = ?{}", validated, i + 1))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     
     let query = format!(
-        "UPDATE {} SET {} WHERE id = ?{}",
+        "UPDATE \"{}\" SET {} WHERE id = ?{}",
         table,
         set_clauses.join(", "),
         obj.len() + 1
@@ -278,7 +301,8 @@ async fn delete_row(
 ) -> Result<Json<Value>, StatusCode> {
     let conn = state.db.get_connection().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
-    let query = format!("DELETE FROM {} WHERE id = ?1", table);
+    let table = validate_identifier(&table)?;
+    let query = format!("DELETE FROM \"{}\" WHERE id = ?1", table);
     let affected = conn.execute(&query, [id])
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 

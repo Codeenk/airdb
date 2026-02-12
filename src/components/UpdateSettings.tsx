@@ -19,7 +19,7 @@ interface UpdateState {
 
 export function UpdateSettings() {
     const [info, setInfo] = useState<UpdateInfo>({
-        currentVersion: '0.2.6',
+        currentVersion: '0.8.0',
         latestVersion: null,
         updateAvailable: false,
         channel: 'stable',

@@ -1,6 +1,6 @@
 # 🗄️ AirDB
 
-**The local-first, GitHub-backed database platform for schema management and API generation.**
+**The local-first, GitHub-backed database platform for modern developers**
 
 [![CI](https://github.com/Codeenk/airdb/actions/workflows/ci.yml/badge.svg)](https://github.com/Codeenk/airdb/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Codeenk/airdb?color=22d3ee&label=latest%20release)](https://github.com/Codeenk/airdb/releases/latest)
@@ -9,33 +9,90 @@
 
 ---
 
-## ⚡ What is AirDB?
+## 🎯 What is AirDB?
 
-AirDB combines the simplicity of SQLite with the power of Git version control. It gives you **full ownership** of your data while enabling team collaboration without the complexity of cloud management.
+AirDB is a **database development platform** that combines the simplicity of SQLite with professional-grade tooling. Design databases visually, version schema like code with Git, and ship production-ready APIs — all in one beautiful desktop application.
 
-- 🔒 **Local-First**: SQLite on your machine, zero latency, offline-capable
-- 📂 **Git-Backed**: Your schema lives in your repo, versioned like code
-- 🔄 **Safe Migrations**: Every change generates reversible SQL migrations
-- 👥 **Team Sync**: Branch isolation, merge conflict resolution, and RBAC
-- 🚀 **Instant API**: Auto-generated REST API with Swagger UI
+**One tool. Zero configuration. Full ownership.**
+
+### Why AirDB?
+
+| Feature | AirDB | Traditional Tools |
+|---------|-------|------------------|
+| **Local-First** | ✅ SQLite on your machine, zero latency | ❌ Cloud-dependent, slow queries |
+| **Git-Backed Schema** | ✅ Every change versioned in your repo | ❌ Manual migration scripts |
+| **Visual Schema Designer** | ✅ Drag-and-drop tables, ER diagrams | ❌ Raw SQL or clunky GUIs |
+| **Auto REST API** | ✅ Instant production endpoints | ❌ Write boilerplate by hand |
+| **Migration Safety** | ✅ Reversible migrations, rollback support | ❌ One-way migration pain |
+| **Team Collaboration** | ✅ Branch isolation, conflict resolution | ❌ Database schema hell |
+| **Audit Trail** | ✅ Built-in change tracking | ❌ Custom logging required |
 
 ---
 
-## 🚀 New in v0.2.6
+## 🚀 What's New in v0.8.0
 
-This release introduces major productivity features:
+This is our biggest release yet — a complete UX overhaul with production-grade features.
 
-### 🎨 Visual SQL Editor
-Edit tables, columns, indexes, and constraints visually. **Impossible to break production**—every visual change generates a safe, reversible migration file.
+### 🎨 Redesigned Sidebar Experience
+- **Auto-collapse icons-only mode** — maximizes screen space
+- **Hover to expand** — smooth overlay with labels
+- **Pin mode** (`Ctrl+B`) — keep sidebar open when needed
+- **Visible active indicators** — cyan accent bars
+- **Optimized icon sizing** — 20px with perfect centering
 
-### 🔄 Integrated Updater
-Built-in update management with safe rollbacks.
-- `airdb update check` - Check GitHub releases
-- `airdb update apply` - Atomic updates
-- `airdb update rollback` - Instant revert to previous version
+### 📊 Visual Migration Manager
+Complete migration timeline with:
+- **Applied vs Pending** visual separation
+- **Inline SQL preview** — see every migration's code
+- **Create migrations** directly from the UI
+- **Schema snapshots** — instant database state capture
+- **Stats dashboard** — applied/pending/total counts
 
-### 🚀 Auto-Start on Boot
-Enable auto-start in Settings → General → "Start AirDB on system boot"
+### 📈 Enhanced Dashboard
+New at-a-glance insights:
+- **Project banner** with DB type, size, and port
+- **Quick stats** — tables, pending migrations, total rows, DB size
+- **Quick actions** — one-click navigation to all tools
+- **Table overview** — row counts sorted by size
+- **Schema health** — migration warnings and checks
+- **Recent activity** — audit log entries with timestamps
+
+### 🌐 Integrated API Server
+- **Start/Stop API** from Settings — no CLI needed
+- **Port configuration** — custom ports with conflict detection
+- **Status indicators** — running state with visual badges
+- **Auto-generated Swagger UI** — instant API documentation
+
+### 🔍 Audit & Observability
+Comprehensive change tracking:
+- **Audit log** for all data operations (insert, update, delete)
+- **Activity feed** in Dashboard — see what changed and when
+- **Health dashboard** — schema metrics and warnings
+- **Resource usage** — database size, row counts, table stats
+
+### ⌨️ Productivity Features
+**Command Palette** (`Ctrl+K` or `Ctrl+P`):
+- VS Code-style quick actions
+- Search commands with keyboard navigation
+- Grouped by Navigate and Actions
+
+**Keyboard Shortcuts**:
+- `Ctrl+1-7` — Navigate pages instantly
+- `Ctrl+,` — Open Settings
+- `Ctrl+B` — Toggle sidebar pin
+- `Escape` — Close modals/palette
+
+**Loading States**:
+- Skeleton loaders instead of spinners
+- Shimmer animations for tables and stats
+- Progressive content reveal
+- Optimized perceived performance
+
+**Notification Center**:
+- Bell icon in topbar with badge count
+- Slide-out notification drawer
+- Auto-populated from pending migrations
+- Dismiss individual or clear all
 
 ---
 
@@ -45,8 +102,8 @@ Enable auto-start in Settings → General → "Start AirDB on system boot"
 
 ```bash
 # Download and extract
-curl -L https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.2.6-linux-x64.tar.gz | tar -xz
-cd airdb-*-linux-x64
+curl -L https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.8.0-linux-x64.tar.gz | tar -xz
+cd airdb-0.8.0-linux-x64
 
 # Install (user mode) or use sudo for system-wide
 ./install.sh
@@ -57,58 +114,190 @@ airdb --version
 
 ### Windows
 
-1. Download [`airdb-0.2.6-windows-x64.zip`](https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.2.6-windows-x64.zip)
+1. Download [`airdb-0.8.0-windows-x64.zip`](https://github.com/Codeenk/airdb/releases/latest/download/airdb-0.8.0-windows-x64.zip)
 2. Extract to a folder (e.g., `C:\Program Files\AirDB`)
 3. Add the `bin\` folder to your system PATH
 4. Run `airdb --version` to verify
 
 See [Installation Guide](docs/installation.md) for detailed instructions.
 
-
 ---
 
-## 🏃 Quick Start
+##🏃 Quick Start
 
-### 1. Initialize a Project
+### 1. Launch the Desktop App
 
 ```bash
-# Create a new project
+# Start AirDB
+airdb-desktop
+
+# Or from CLI
 airdb init my-project
 cd my-project
-
-# Login to GitHub (for sync)
-airdb auth login
+airdb serve
 ```
 
-### 2. Create Your First Table
+### 2. Create Your Schema Visually
 
-```bash
-# Generate a migration
-airdb migrate create add_users
+1. Click **Tables** in the sidebar
+2. Click **+ New Table**
+3. Add columns, set types, define constraints
+4. AirDB **auto-generates a migration** for you
 
-# Edit the migration file: sql/migrations/001_add_users.sql
-# OR use the Visual Editor in the desktop app
-```
-
-### 3. Apply & Sync
+### 3. Apply & Sync to GitHub
 
 ```bash
 # Apply migrations locally
 airdb migrate push
 
-# Sync schema to GitHub
+# Sync schema to GitHub (first time)
 airdb sync setup --create
 airdb sync push -m "Initial schema"
 ```
 
-### 4. Serve API
+### 4. Your API is Ready
+
+The API server starts automatically on `:54321`:
 
 ```bash
-# Start the REST API server
-airdb serve
-# API: http://localhost:54321
-# Docs: http://localhost:54321/swagger-ui
+# All your tables automatically get endpoints
+GET    /api/users
+POST   /api/users
+GET    /api/users/:id
+PATCH  /api/users/:id
+DELETE /api/users/:id
+
+# Interactive docs
+http://localhost:54321/swagger-ui
 ```
+
+---
+
+## 🎨 Desktop App Features
+
+### Visual Schema Designer
+- Drag-and-drop table creation
+- Foreign key relationships with visual connectors
+- Index manager with performance hints
+- Constraint editor (CHECK, UNIQUE, DEFAULT)
+- ER diagram with React Flow
+
+### Data Browser
+- DataGrid with inline editing
+- Row inspector with JSON view
+- Bulk operations (insert, update, delete)
+- Export to CSV/JSON/SQL
+- Advanced filtering and sorting
+
+### SQL Editor
+- CodeMirror 6 with autocomplete
+- Multiple tabs for queries
+- Results grid with pagination
+- EXPLAIN visualizer
+- Saved queries library
+
+### Migration Dashboard
+- Timeline view of all migrations
+- Pending vs Applied visual separation
+- Inline SQL preview
+- Create migrations with custom names
+- Generate schema snapshots
+- Rollback support
+
+### NoSQL Browser
+- JSON document storage
+- Collection management
+- Query by ID or filter
+- Syntax-highlighted preview
+- Import/export collections
+
+### Settings Hub
+8 specialized tabs:
+1. **General** — Project name, description, auto-start
+2. **Database** — Connection settings, engine selection
+3. **API Server** — Port config, Start/Stop controls
+4. **GitHub** — Sync settings, branch config
+5. **Security** — API keys, RBAC, authentication
+6. **Migrations** — Auto-apply, conflict resolution
+7. **Appearance** — Theme, sidebar, editor preferences
+8. **Updates** — Version check, auto-update, rollback
+
+---
+
+## 🛠️ CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `airdb init <name>` | Create new project |
+| `airdb status` | Show project status, pending migrations |
+| `airdb migrate create <name>` | Generate timestamped migration file |
+| `airdb migrate push` | Apply all pending migrations |
+| `airdb migrate rollback [count]` | Rollback N migrations (default: 1) |
+| `airdb migrate list` | List all migrations with status |
+| `airdb sync setup --create` | Initialize GitHub remote |
+| `airdb sync push -m "message"` | Sync changes to GitHub |
+| `airdb sync pull` | Pull team changes and auto-merge |
+| `airdb serve [--port 54321]` | Start REST API server |
+| `airdb auth login` | GitHub device flow authentication |
+| `airdb update check` | Check for new AirDB releases |
+| `airdb update apply` | Download and install updates |
+| `airdb update rollback` | Revert to previous version |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│           Desktop App (Tauri + React)           │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
+│  │ Visual   │  │ SQL      │  │ Migration    │  │
+│  │ Designer │  │ Editor   │  │ Manager      │  │
+│  └──────────┘  └──────────┘  └──────────────┘  │
+└────────────────────┬────────────────────────────┘
+                     │ IPC Commands
+         ┌───────────▼────────────┐
+         │   Rust Engine Core     │
+         │  ┌──────────────────┐  │
+         │  │ DatabaseAdapter  │  │ ◄─── Trait-based multi-DB
+         │  │ (SQLite/PG/...)  │  │
+         │  └──────────────────┘  │
+         │  ┌──────────────────┐  │
+         │  │ Migration Runner │  │ ◄─── Safe schema evolution
+         │  └──────────────────┘  │
+         │  ┌──────────────────┐  │
+         │  │ Axum REST API    │  │ ◄─── Auto-generated endpoints
+         │  └──────────────────┘  │
+         │  ┌──────────────────┐  │
+         │  │ Audit Logger     │  │ ◄─── Change tracking
+         │  └──────────────────┘  │
+         └───────────┬────────────┘
+                     │
+       ┌─────────────┼─────────────┐
+       ▼             ▼             ▼
+  ┏━━━━━━━┓   ┏━━━━━━━━━┓   ┏━━━━━━━━━┓
+  ┃ SQLite┃   ┃  GitHub ┃   ┃  Logs   ┃
+  ┗━━━━━━━┛   ┗━━━━━━━━━┛   ┗━━━━━━━━━┛
+```
+
+### Tech Stack
+
+**Frontend**:
+- React 19.1.0 + TypeScript 5.8.3
+- Vite 7.0.4 for blazing-fast builds
+- CodeMirror 6 for SQL editing
+- React Flow for ER diagrams
+- Lucide React for icons
+- Custom Void Cyan dark theme
+
+**Backend**:
+- Rust (edition 2021)
+- Tauri 2.10.2 for desktop shell
+- rusqlite 0.32 with connection pooling
+- Axum 0.8 for REST API
+- git2 0.19 for GitHub sync
+- tokio 1 (full async runtime)
+- clap 4 for CLI parsing
 
 ---
 
@@ -116,53 +305,79 @@ airdb serve
 
 | Category | Guide | Description |
 |----------|-------|-------------|
-| **Getting Started** | [**Introduction**](docs/introduction.md) | high-level overview |
-| | [**Quick Start**](docs/quickstart.md) | 5-minute tutorial |
-| | [**Installation**](docs/installation.md) | Platform setup guides |
-| **Core Concepts** | [**SQL Guide**](docs/sql-guide.md) | Working with tables & relations |
-| | [**NoSQL Guide**](docs/nosql-guide.md) | Document storage & JSON |
-| | [**Migrations**](docs/migrations.md) | Schema versioning explained |
-| **Operations** | [**CLI Reference**](docs/cli-reference.md) | Complete command list |
-| | [**Updates & Rollback**](docs/updates-and-rollback.md) | Managing AirDB versions |
-| | [**Security**](docs/security.md) | Auth, keys & best practices |
-| **Collaboration** | [**Team Workflows**](docs/team-workflows.md) | Branching & merging |
-| | [**Conflict Resolution**](docs/conflict-resolution.md) | Handling sync conflicts |
-| **Support** | [**FAQ**](docs/faq.md) | Common questions |
+| **Getting Started** | [**Introduction**](docs/introduction.md) | High-level overview and concepts |
+| | [**Quick Start**](docs/quickstart.md) | 5-minute hands-on tutorial |
+| | [**Installation**](docs/installation.md) | Platform-specific setup guides |
+| **Core Concepts** | [**SQL Guide**](docs/sql-guide.md) | Tables, relations, indexes |
+| | [**NoSQL Guide**](docs/nosql-guide.md) | JSON document storage |
+| | [**Migrations**](docs/migrations.md) | Schema versioning deep-dive |
+| **Operations** | [**CLI Reference**](docs/cli-reference.md) | Complete command documentation |
+| | [**Updates & Rollback**](docs/updates-and-rollback.md) | Version management |
+| | [**Security**](docs/security.md) | API keys, RBAC, best practices |
+| **Collaboration** | [**Team Workflows**](docs/team-workflows.md) | Branching, merging, sync |
+| | [**Conflict Resolution**](docs/conflict-resolution.md) | Handling schema conflicts |
+| **Support** | [**FAQ**](docs/faq.md) | Common questions answered |
 
 ---
 
-## 🏗️ Architecture
+## 🌟 Use Cases
 
-```mermaid
-graph TD
-    Client[Desktop App / CLI] -->|IPC/Commands| Engine[Rust Engine]
-    
-    subgraph "Local Machine"
-        Engine -->|Read/Write| SQLite[(SQLite DB)]
-        Engine -->|Manage| Migrations[Migration Files]
-        Engine -->|Serve| API[REST API Server]
-    end
-    
-    subgraph "Remote"
-        Engine -->|Sync| GitHub[GitHub Repo]
-        GitHub -->|Version Control| Schema[Schema & Migrations]
-    end
+### Solo Developers
+- **Rapid prototyping** with visual schema designer
+- **Instant APIs** without writing boilerplate
+- **Git-backed backups** — never lose schema evolution history
+
+### Startups & Small Teams
+- **Local-first development** — fast iteration, no cloud costs
+- **Branch isolation** — each feature gets its own schema branch
+- **Painless migrations** — reversible, tested, version-controlled
+
+### Education
+- **Visual schema learning** — see relationships in ER diagrams
+- **Safe experimentation** — rollback any change instantly
+- **Complete audit trail** — review every database operation
+
+### Production Apps
+- **Type-safe migrations** — auto-generated, never manually edited
+- **Zero-downtime deploys** — test migrations on staging branches
+- **Built-in monitoring** — audit logs, health checks, resource metrics
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+
+### Development Setup
+
+```bash
+# Clone the repo
+git clone https://github.com/Codeenk/airdb.git
+cd airdb
+
+# Install dependencies
+npm install
+cargo build
+
+# Dev mode (hot reload)
+npm run tauri dev
+
+# Production build
+npm run tauri build
 ```
 
 ---
 
-## 🛠️ CLI Cheatsheet
+## 🗺️ Roadmap
 
-| Command | Description |
-|---------|-------------|
-| `airdb init <name>` | Create new project |
-| `airdb status` | Show project status |
-| `airdb migrate create <name>` | Create new migration |
-| `airdb migrate push` | Apply pending migrations |
-| `airdb sync push` | Sync changes to GitHub |
-| `airdb sync pull` | Get changes from team |
-| `airdb serve` | Start REST API server |
-| `airdb update check` | Check for updates |
+- [ ] **PostgreSQL Adapter** — multi-database engine support
+- [ ] **MySQL Adapter** — expand database compatibility
+- [ ] **AI Query Assistant** — natural language to SQL
+- [ ] **GraphQL API** — in addition to REST
+- [ ] **Real-time Sync** — WebSocket-based collaboration
+- [ ] **Schema Templates** — starter templates for common use cases
+- [ ] **Advanced RBAC** — role-based access control for APIs
+- [ ] **Analytics Dashboard** — query performance insights
 
 ---
 
@@ -172,8 +387,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 💬 Community & Support
+
+- **Issues**: [GitHub Issues](https://github.com/Codeenk/airdb/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Codeenk/airdb/discussions)
+- **Discord**: [Join our community](https://discord.gg/airdb) *(coming soon)*
+- **Docs**: [docs.airdb.dev](https://docs.airdb.dev) *(coming soon)*
+
+---
+
 <p align="center">
-  <strong>Made with ❤️ by the AirLabs Team</strong><br>
-  <a href="https://github.com/Codeenk/airdb/issues">Report Bug</a> •
-  <a href="https://github.com/Codeenk/airdb/discussions">Request Feature</a>
+  <strong>Built with ❤️ by developers, for developers</strong><br>
+  <sub>AirDB is open-source and always will be.</sub>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Codeenk/airdb/stargazers">⭐ Star us on GitHub</a> •
+  <a href="https://github.com/Codeenk/airdb/releases">📦 Download Latest</a> •
+  <a href="https://github.com/Codeenk/airdb/discussions">💬 Join Discussion</a>
 </p>

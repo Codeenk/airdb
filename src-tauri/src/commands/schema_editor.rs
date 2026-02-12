@@ -9,16 +9,17 @@ use crate::AppState;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Column {
     pub name: String,
-    #[serde(rename = "type")]
+    #[serde(alias = "type", alias = "column_type", rename(serialize = "type"))]
     pub column_type: String,
+    #[serde(alias = "is_nullable", default)]
     pub nullable: bool,
-    #[serde(rename = "defaultValue")]
+    #[serde(alias = "defaultValue", alias = "default_value", rename(serialize = "default_value"))]
     pub default_value: Option<String>,
-    #[serde(rename = "isPrimaryKey")]
+    #[serde(alias = "is_pk", alias = "isPrimaryKey", rename(serialize = "is_pk"))]
     pub is_primary_key: bool,
-    #[serde(rename = "isUnique")]
+    #[serde(alias = "is_unique", alias = "isUnique", rename(serialize = "is_unique"))]
     pub is_unique: bool,
-    #[serde(rename = "foreignKey")]
+    #[serde(alias = "foreignKey", alias = "foreign_key", rename(serialize = "foreign_key"), default)]
     pub foreign_key: Option<ForeignKey>,
 }
 
@@ -200,13 +201,50 @@ pub fn generate_table_migration(
     table_name: String,
     columns: Vec<Column>,
     is_new: bool,
-    original_columns: Vec<Column>,
+    state: State<AppState>,
 ) -> Result<MigrationPreview, String> {
     if is_new {
         generate_create_table_migration(&table_name, &columns)
     } else {
+        // Load original columns from the database instead of requiring frontend to send them
+        let original_columns = load_original_columns(&state, &table_name)?;
         generate_alter_table_migration(&table_name, &columns, &original_columns)
     }
+}
+
+/// Load original column definitions from the database for diff-based migration generation
+fn load_original_columns(state: &State<AppState>, table_name: &str) -> Result<Vec<Column>, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(&format!("PRAGMA table_info('{}')", table_name))
+        .map_err(|e| e.to_string())?;
+
+    let columns: Vec<Column> = stmt
+        .query_map([], |row| {
+            let name: String = row.get(1)?;
+            let col_type: String = row.get(2)?;
+            let not_null: i32 = row.get(3)?;
+            let default: Option<String> = row.get(4)?;
+            let pk: i32 = row.get(5)?;
+
+            Ok(Column {
+                name,
+                column_type: col_type,
+                nullable: not_null == 0,
+                default_value: default,
+                is_primary_key: pk > 0,
+                is_unique: false,
+                foreign_key: None,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(columns)
 }
 
 fn generate_create_table_migration(
@@ -383,6 +421,105 @@ pub fn apply_generated_migration(
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     conn.execute_batch(&up_sql).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+/// Execute raw SQL query
+#[tauri::command]
+pub fn execute_raw_sql(
+    state: State<AppState>,
+    sql: String,
+) -> Result<serde_json::Value, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    
+    // Check if it's a SELECT query
+    let is_select = sql.trim().to_uppercase().starts_with("SELECT");
+    
+    if is_select {
+        // Execute SELECT query and return results
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let column_count = stmt.column_count();
+        let column_names: Vec<String> = stmt
+            .column_names()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        
+        let rows: Vec<serde_json::Value> = stmt
+            .query_map([], |row| {
+                let mut map = serde_json::Map::new();
+                for i in 0..column_count {
+                    let col_name = &column_names[i];
+                    let value: rusqlite::types::Value = row.get(i)?;
+                    let json_value = match value {
+                        rusqlite::types::Value::Null => serde_json::Value::Null,
+                        rusqlite::types::Value::Integer(n) => serde_json::json!(n),
+                        rusqlite::types::Value::Real(f) => serde_json::json!(f),
+                        rusqlite::types::Value::Text(s) => serde_json::json!(s),
+                        rusqlite::types::Value::Blob(b) => {
+                            serde_json::json!(format!("BLOB({} bytes)", b.len()))
+                        }
+                    };
+                    map.insert(col_name.clone(), json_value);
+                }
+                Ok(serde_json::Value::Object(map))
+            })
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+        
+        Ok(serde_json::json!({
+            "rows": rows,
+            "rowCount": rows.len()
+        }))
+    } else {
+        // Execute non-SELECT query (INSERT, UPDATE, DELETE, etc.)
+        let changes = conn.execute(&sql, []).map_err(|e| e.to_string())?;
+        
+        Ok(serde_json::json!({
+            "affectedRows": changes,
+            "message": format!("Query executed successfully. {} row(s) affected.", changes)
+        }))
+    }
+}
+
+/// Get project type (sql or nosql)
+#[tauri::command]
+pub fn get_project_type(state: State<AppState>) -> Result<String, String> {
+    use crate::engine::config::Config;
+    
+    let project_dir_lock = state.project_dir.lock().map_err(|e| e.to_string())?;
+    let project_dir = project_dir_lock
+        .as_ref()
+        .ok_or("Project directory not set")?;
+    
+    let config = Config::load(project_dir).map_err(|e| e.to_string())?;
+    Ok(config.database.db_type)
+}
+
+/// Set project type (sql or nosql)
+#[tauri::command]
+pub fn set_project_type(
+    state: State<AppState>,
+    project_type: String,
+) -> Result<(), String> {
+    use crate::engine::config::Config;
+    
+    if project_type != "sql" && project_type != "nosql" && project_type != "hybrid" {
+        return Err("Invalid project type. Must be 'sql', 'nosql', or 'hybrid'".to_string());
+    }
+    
+    let project_dir_lock = state.project_dir.lock().map_err(|e| e.to_string())?;
+    let project_dir = project_dir_lock
+        .as_ref()
+        .ok_or("Project directory not set")?;
+    
+    let mut config = Config::load(project_dir).map_err(|e| e.to_string())?;
+    config.database.db_type = project_type;
+    config.save(project_dir).map_err(|e| e.to_string())?;
     
     Ok(())
 }

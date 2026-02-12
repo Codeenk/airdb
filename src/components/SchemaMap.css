@@ -1,0 +1,232 @@
+/* ─── Schema Map / ER Diagram ─── */
+
+.schema-map-container {
+  width: 100%;
+  height: 100%;
+  background: var(--void);
+}
+
+.schema-map-container .react-flow__renderer {
+  background: var(--void) !important;
+}
+
+/* ─── Table Node ─── */
+.er-table-node {
+  background: var(--surface-0);
+  border: 1px solid var(--surface-3);
+  border-radius: 8px;
+  min-width: 240px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.er-table-node:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 24px rgba(0, 212, 170, 0.15);
+}
+
+.er-table-header {
+  background: linear-gradient(135deg, rgba(0, 212, 170, 0.15), rgba(0, 212, 170, 0.05));
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-3);
+  cursor: pointer;
+}
+
+.er-table-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.er-table-count {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: var(--surface-1);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.er-table-columns {
+  padding: 4px 0;
+}
+
+.er-column {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  font-size: 12px;
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+.er-column:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.er-column.pk {
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.er-column.fk {
+  background: rgba(130, 170, 255, 0.05);
+}
+
+.er-col-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.er-column.pk .er-col-icon {
+  color: var(--accent);
+}
+
+.er-column.fk .er-col-icon {
+  color: #82aaff;
+}
+
+.er-col-name {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  flex: 1;
+}
+
+.er-col-type {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.er-col-not-null {
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ─── Panel ─── */
+.schema-map-panel {
+  background: var(--surface-0);
+  border: 1px solid var(--surface-3);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+}
+
+.schema-map-filter {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.schema-map-filter:focus {
+  border-color: var(--accent);
+}
+
+.schema-map-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-wrap: wrap;
+}
+
+.schema-map-stats span {
+  white-space: nowrap;
+}
+
+/* ─── Loading/Error/Empty States ─── */
+.schema-map-loading,
+.schema-map-error,
+.schema-map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.schema-map-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.schema-map-error p {
+  color: var(--danger);
+}
+
+.schema-map-empty h3 {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.schema-map-empty p {
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* ─── React Flow Overrides ─── */
+.react-flow__controls button {
+  background: var(--surface-1) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--surface-3) !important;
+  fill: var(--text-primary) !important;
+}
+
+.react-flow__controls button:hover {
+  background: var(--surface-2) !important;
+}
+
+.react-flow__controls button svg {
+  fill: var(--text-primary) !important;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--surface-1);
+}
+
+.react-flow__edge-text {
+  fill: var(--text-secondary);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border: 1px solid var(--surface-3);
+  transition: all 0.15s ease;
+}
+
+.btn-sm:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}

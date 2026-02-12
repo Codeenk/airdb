@@ -20,6 +20,7 @@ pub enum DatabaseError {
     NotFound(String),
 }
 
+#[derive(Clone)]
 pub struct Database {
     pool: DbPool,
 }

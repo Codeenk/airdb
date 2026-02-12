@@ -18,9 +18,15 @@ pub mod compatibility;
 pub mod locks;
 pub mod autostart;
 pub mod installer;
+pub mod adapter;
+pub mod connections;
 
 pub use config::Config;
 pub use database::Database;
+pub use adapter::{DatabaseAdapter, SqlValue, QueryResult, ExecResult, DataPage, AdapterError};
+pub use adapter::dialect::{SqlDialect, DialectGenerator};
+pub use adapter::sqlite::SqliteAdapter;
+pub use connections::{ConnectionManager, ConnectionConfig, AdapterConfig};
 pub use nosql::NoSqlEngine;
 pub use hybrid::{Relation, RelationType, AirQuery, AirResult};
 pub use rbac::{Policy, Enforcer, AuthContext};
